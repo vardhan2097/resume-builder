@@ -134,3 +134,45 @@ test('user cannot download another users pdf', function () {
         ->get(route('resumes.pdf', $resume))
         ->assertForbidden();
 });
+
+test('user can download own resume as docx', function () {
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+
+    $this->actingAs($user)
+        ->get(route('resumes.docx', $resume))
+        ->assertOk()
+        ->assertDownload();
+});
+
+test('docx handles special characters', function () {
+    $user = User::factory()->create();
+
+    $data = Resume::defaultData();
+    $data['personal']['full_name'] = 'R&D <Team> "Lead"';
+    $data['experience'][] = [
+        'id' => 'x1',
+        'job_title' => 'Dev & Ops',
+        'company' => 'A<B>C',
+        'location' => '',
+        'start_date' => '2024-01',
+        'end_date' => '',
+        'current' => true,
+        'description' => "Line one & two\nLine <three>",
+    ];
+
+    $resume = $user->resumes()->create(['data' => $data]);
+
+    $this->actingAs($user)
+        ->get(route('resumes.docx', $resume))
+        ->assertOk()
+        ->assertDownload();
+});
+
+test('user cannot download another users docx', function () {
+    $resume = User::factory()->create()->resumes()->create();
+
+    $this->actingAs(User::factory()->create())
+        ->get(route('resumes.docx', $resume))
+        ->assertForbidden();
+});

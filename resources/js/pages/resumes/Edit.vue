@@ -5,7 +5,7 @@ import LevelSection from '@/components/resume/LevelSection.vue';
 import PersonalSection from '@/components/resume/PersonalSection.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { index, pdf, update } from '@/routes/resumes';
+import { docx, index, pdf, update } from '@/routes/resumes';
 import ResumePreview from '@/components/resume/ResumePreview.vue';
 import type { Resume, TemplateMeta } from '@/types/resume';
 
@@ -39,8 +39,8 @@ function save(onSaved?: () => void) {
         });
 }
 
-function downloadPdf() {
-    const url = pdf(props.resume.id).url;
+function download(kind: 'pdf' | 'docx') {
+    const url = kind === 'pdf' ? pdf(props.resume.id).url : docx(props.resume.id).url;
 
     if (!form.isDirty) {
         window.location.href = url;
@@ -70,12 +70,17 @@ function downloadPdf() {
                     type="button"
                     variant="outline"
                     :disabled="form.processing"
-                    @click="downloadPdf"
+                    @click="download('pdf')"
                 >
                     PDF
                 </Button>
-                <Button type="submit" :disabled="form.processing">
-                    {{ form.processing ? 'Saving…' : 'Save' }}
+                <Button
+                    type="button"
+                    variant="outline"
+                    :disabled="form.processing"
+                    @click="download('docx')"
+                >
+                    Word
                 </Button>
             </div>
 

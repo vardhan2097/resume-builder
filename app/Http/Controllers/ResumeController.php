@@ -13,6 +13,7 @@ use App\Services\ResumeRenderer;
 use Illuminate\Http\Response as HttpResponse;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Str;
+use App\Services\ResumeDocxBuilder;
 
 class ResumeController extends Controller
 {
@@ -95,4 +96,17 @@ class ResumeController extends Controller
             ->download($filename);
     }
 
+
+    public function docx(Resume $resume, ResumeDocxBuilder $builder)
+    {
+        Gate::authorize('update', $resume);
+
+        $path = $builder->build($resume);
+
+        $name = $resume->data['personal']['full_name'] ?? '' ?: $resume->title;
+
+        return response()
+            ->download($path, Str::slug($name).'-resume.docx')
+            ->deleteFileAfterSend(true);
+    }
 }
