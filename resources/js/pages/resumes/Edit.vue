@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { docx, index, pdf, update } from '@/routes/resumes';
 import ResumePreview from '@/components/resume/ResumePreview.vue';
 import type { Resume, TemplateMeta } from '@/types/resume';
+import PhotoSection from '@/components/resume/PhotoSection.vue';
 
 const props = defineProps<{
     resume: Resume;
@@ -136,6 +137,13 @@ function download(kind: 'pdf' | 'docx') {
                 </div>
             </section>
 
+            <PhotoSection
+                v-if="templates[form.template]?.photo"
+                :resume-id="resume.id"
+                :photo-url="resume.photo_url"
+                :initials="(form.content.personal.full_name || 'CV').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()"
+            />
+
             <PersonalSection v-model="form.content.personal" />
             <ExperienceSection v-model="form.content.experience" />
             <LevelSection
@@ -162,6 +170,7 @@ function download(kind: 'pdf' | 'docx') {
                     :template="form.template"
                     :color="form.color"
                     :content="form.content"
+                    :photo-key="resume.photo_url"
                 />
             </div>
         </div>

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 class Resume extends Model
 {
@@ -32,6 +33,12 @@ class Resume extends Model
         static::creating(function (Resume $resume) {
             if (empty($resume->data)) {
                 $resume->data = self::defaultData();
+            }
+        });
+
+        static::deleted(function (Resume $resume) {
+            if ($resume->photo_path) {
+                Storage::disk('local')->delete($resume->photo_path);
             }
         });
     }

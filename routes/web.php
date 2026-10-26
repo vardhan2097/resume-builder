@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ResumeController;
+use App\Http\Controllers\ResumeImportController;
 
 Route::inertia('/', 'Welcome')->name('home');
 
@@ -20,6 +21,18 @@ Route::middleware(['auth', 'verified'])->group(function ()
 
     Route::get('resumes/{resume}/docx', [ResumeController::class, 'docx'])
         ->name('resumes.docx');
+
+    Route::post('resumes/{resume}/photo', [ResumeController::class, 'uploadPhoto'])
+        ->name('resumes.photo.upload');
+
+    Route::get('resumes/{resume}/photo', [ResumeController::class, 'showPhoto'])
+        ->name('resumes.photo.show');
+
+    Route::delete('resumes/{resume}/photo', [ResumeController::class, 'deletePhoto'])
+        ->name('resumes.photo.delete');
+
+    Route::post('resumes/import', [ResumeImportController::class, 'store'])
+        ->name('resumes.import');
 });
 
 require __DIR__.'/settings.php';

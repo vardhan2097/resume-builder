@@ -29,7 +29,10 @@
 
         .header { background: #f8fafc; }
         .header td { padding: 16px; }
-        .avatar { width: 84px; height: 84px; border-radius: 42px; background: {{ $color }}; color: #ffffff; font-size: 28px; font-weight: bold; text-align: center; line-height: 84px; }
+
+        .avatar { width: 84px; height: 58px; padding-top: 26px; border-radius: 42px; background: {{ $color }}; color: #ffffff; font-size: 28px; font-weight: bold; text-align: center; line-height: 1; }
+        .avatar-img { width: 84px; height: 84px; border-radius: 42px; }
+
         .name { margin: 0; font-size: 26px; font-weight: bold; color: #111827; letter-spacing: 0.5px; }
         .role { margin: 2px 0 8px; font-size: 13px; font-weight: bold; color: {{ $color }}; }
         .contact span { margin-right: 14px; font-size: 9px; color: #4b5563; }
@@ -54,7 +57,11 @@
 <table class="header">
     <tr>
         <td style="width: 100px;">
-            <div class="avatar">{{ F::initials($p['full_name']) }}</div>
+            @if ($photo)
+                <img src="{{ $photo }}" class="avatar-img" alt="">
+            @else
+                <div class="avatar">{{ F::initials($p['full_name']) }}</div>
+            @endif
         </td>
         <td style="vertical-align: middle;">
             <h1 class="name">{{ $p['full_name'] ?: 'Your Name' }}</h1>

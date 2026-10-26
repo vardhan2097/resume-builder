@@ -7,6 +7,7 @@ const props = defineProps<{
     resumeId: number;
     template: string;
     color: string;
+    photoKey?: string | null;
     content: ResumeData;
 }>();
 
@@ -72,7 +73,7 @@ function onFrameLoad(event: Event) {
 }
 
 watch(
-    () => [props.template, props.color, props.content],
+    () => [props.template, props.color, props.content, props.photoKey],
     () => {
         clearTimeout(timer);
         timer = setTimeout(load, 400);

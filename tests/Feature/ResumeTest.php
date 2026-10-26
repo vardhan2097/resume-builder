@@ -2,6 +2,8 @@
 
 use App\Models\Resume;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 test('guests are redirected to login', function () {
     $this->get(route('resumes.index'))->assertRedirect(route('login'));
@@ -175,4 +177,98 @@ test('user cannot download another users docx', function () {
     $this->actingAs(User::factory()->create())
         ->get(route('resumes.docx', $resume))
         ->assertForbidden();
+});
+
+test('user can upload a photo', function () {
+    Storage::fake('local');
+
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+
+    $this->actingAs($user)
+        ->post(route('resumes.photo.upload', $resume), [
+            'photo' => UploadedFile::fake()->image('me.jpg', 1200, 900),
+        ])
+        ->assertSessionHasNoErrors();
+
+    $resume->refresh();
+
+    expect($resume->photo_path)->not->toBeNull();
+    Storage::disk('local')->assertExists($resume->photo_path);
+
+    [$width, $height] = getimagesizefromstring(Storage::disk('local')->get($resume->photo_path));
+    expect([$width, $height])->toBe([400, 400]);
+});
+
+test('non image files are rejected', function () {
+    Storage::fake('local');
+
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+
+    $this->actingAs($user)
+        ->post(route('resumes.photo.upload', $resume), [
+            'photo' => UploadedFile::fake()->create('virus.pdf', 100, 'application/pdf'),
+        ])
+        ->assertSessionHasErrors('photo');
+});
+
+test('deleting a resume deletes its photo', function () {
+    Storage::fake('local');
+
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+
+    $this->actingAs($user)->post(route('resumes.photo.upload', $resume), [
+        'photo' => UploadedFile::fake()->image('me.jpg'),
+    ]);
+
+    $path = $resume->refresh()->photo_path;
+
+    $this->actingAs($user)->delete(route('resumes.destroy', $resume));
+
+    Storage::disk('local')->assertMissing($path);
+});
+
+test('user cannot see another users photo', function () {
+    $resume = User::factory()->create()->resumes()->create();
+
+    $this->actingAs(User::factory()->create())
+        ->get(route('resumes.photo.show', $resume))
+        ->assertForbidden();
+});
+
+test('user can import a docx cv', function () {
+    $word = new \PhpOffice\PhpWord\PhpWord();
+    $section = $word->addSection();
+    foreach (['Asha Naik', 'Laravel Developer', 'asha@example.com | +91 98765 43210', 'Skills', 'PHP, Laravel, MySQL'] as $line) {
+        $section->addText($line);
+    }
+    $path = sys_get_temp_dir().'/cv-test-'.uniqid().'.docx';
+    \PhpOffice\PhpWord\IOFactory::createWriter($word, 'Word2007')->save($path);
+
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->post(route('resumes.import'), [
+        'cv' => new UploadedFile($path, 'cv.docx', null, null, true),
+    ]);
+
+    $resume = $user->resumes()->first();
+
+    expect($resume)->not->toBeNull();
+    $response->assertRedirect(route('resumes.edit', $resume));
+    expect($resume->data['personal']['full_name'])->toBe('Asha Naik')
+        ->and(array_column($resume->data['skills'], 'name'))->toBe(['PHP', 'Laravel', 'MySQL']);
+});
+
+test('import rejects unsupported files', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->post(route('resumes.import'), [
+            'cv' => UploadedFile::fake()->create('cv.txt', 10, 'text/plain'),
+        ])
+        ->assertSessionHasErrors('cv');
+
+    expect($user->resumes()->count())->toBe(0);
 });

@@ -14,6 +14,9 @@ use Illuminate\Http\Response as HttpResponse;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Str;
 use App\Services\ResumeDocxBuilder;
+use Illuminate\Support\Facades\Storage;
+use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\ImageManager;
 
 class ResumeController extends Controller
 {
@@ -49,6 +52,9 @@ class ResumeController extends Controller
                 'template' => $resume->template,
                 'color' => $resume->color,
                 'data' => array_replace(Resume::defaultData(), $resume->data ?? []),
+                'photo_url' => $resume->photo_path
+                    ? route('resumes.photo.show', $resume).'?v='.md5($resume->photo_path)
+                    : null,
             ],
             'templates' => config('resume.templates'),
         ]);
@@ -78,6 +84,7 @@ class ResumeController extends Controller
             $request->input('template'),
             $request->input('color'),
             $request->input('data', []),
+            photoPath: $resume->photo_path,
         ));
     }
 
@@ -85,7 +92,7 @@ class ResumeController extends Controller
     {
         Gate::authorize('update', $resume);
 
-        $html = $renderer->render($resume->template, $resume->color, $resume->data, pdf: true);
+        $html = $renderer->render($resume->template, $resume->color, $resume->data, pdf: true, photoPath: $resume->photo_path,);
 
         $name = $resume->data['personal']['full_name'] ?? '' ?: $resume->title;
         $filename = Str::slug($name).'-resume.pdf';
@@ -108,5 +115,51 @@ class ResumeController extends Controller
         return response()
             ->download($path, Str::slug($name).'-resume.docx')
             ->deleteFileAfterSend(true);
+    }
+
+    public function uploadPhoto(Request $request, Resume $resume): RedirectResponse
+    {
+        Gate::authorize('update', $resume);
+
+        $request->validate([
+            'photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ]);
+
+        $image = (new ImageManager(new Driver()))
+            ->read($request->file('photo')->getRealPath())
+            ->cover(400, 400);
+
+        $path = 'photos/'.$resume->id.'-'.Str::random(16).'.jpg';
+
+        Storage::disk('local')->put($path, (string) $image->toJpeg(85));
+
+        if ($resume->photo_path) {
+            Storage::disk('local')->delete($resume->photo_path);
+        }
+
+        $resume->update(['photo_path' => $path]);
+
+        return back();
+    }
+
+    public function showPhoto(Resume $resume)
+    {
+        Gate::authorize('update', $resume);
+
+        abort_unless($resume->photo_path && Storage::disk('local')->exists($resume->photo_path), 404);
+
+        return Storage::disk('local')->response($resume->photo_path);
+    }
+
+    public function deletePhoto(Resume $resume): RedirectResponse
+    {
+        Gate::authorize('update', $resume);
+
+        if ($resume->photo_path) {
+            Storage::disk('local')->delete($resume->photo_path);
+            $resume->update(['photo_path' => null]);
+        }
+
+        return back();
     }
 }
