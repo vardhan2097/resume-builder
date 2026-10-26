@@ -5,7 +5,7 @@ import LevelSection from '@/components/resume/LevelSection.vue';
 import PersonalSection from '@/components/resume/PersonalSection.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { index, update } from '@/routes/resumes';
+import { index, pdf, update } from '@/routes/resumes';
 import ResumePreview from '@/components/resume/ResumePreview.vue';
 import type { Resume, TemplateMeta } from '@/types/resume';
 
@@ -27,13 +27,29 @@ const form = useForm({
     content: props.resume.data,
 });
 
-function save() {
+function save(onSaved?: () => void) {
     form
         .transform(({ content, ...rest }) => ({ ...rest, data: content }))
         .put(update(props.resume.id).url, {
             preserveScroll: true,
-            onSuccess: () => form.defaults(),
+            onSuccess: () => {
+                form.defaults();
+                onSaved?.();
+            },
         });
+}
+
+function downloadPdf() {
+    const url = pdf(props.resume.id).url;
+
+    if (!form.isDirty) {
+        window.location.href = url;
+        return;
+    }
+
+    save(() => {
+        window.location.href = url;
+    });
 }
 </script>
 
@@ -41,23 +57,23 @@ function save() {
     <Head :title="form.title || 'Edit resume'" />
 
     <div class="grid gap-6 p-4 lg:grid-cols-2">
-        <form class="flex flex-col gap-6" @submit.prevent="save">
-            <div
-                class="sticky top-0 z-10 flex items-center gap-3 rounded-xl border bg-background p-3"
-            >
+        <form class="flex flex-col gap-6" @submit.prevent="save()">
+            <div class="sticky top-0 z-10 flex items-center gap-3 rounded-xl border bg-background p-3">
                 <Input v-model="form.title" class="font-medium" />
-                <span
-                    v-if="form.recentlySuccessful"
-                    class="text-sm whitespace-nowrap text-green-600"
-                >
+                <span v-if="form.recentlySuccessful" class="text-sm whitespace-nowrap text-green-600">
                     Saved ✓
                 </span>
-                <span
-                    v-else-if="form.isDirty"
-                    class="text-sm whitespace-nowrap text-amber-600"
-                >
+                <span v-else-if="form.isDirty" class="text-sm whitespace-nowrap text-amber-600">
                     Unsaved
                 </span>
+                <Button
+                    type="button"
+                    variant="outline"
+                    :disabled="form.processing"
+                    @click="downloadPdf"
+                >
+                    PDF
+                </Button>
                 <Button type="submit" :disabled="form.processing">
                     {{ form.processing ? 'Saving…' : 'Save' }}
                 </Button>

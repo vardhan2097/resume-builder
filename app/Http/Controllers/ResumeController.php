@@ -11,6 +11,8 @@ use Inertia\Response;
 use App\Http\Requests\UpdateResumeRequest;
 use App\Services\ResumeRenderer;
 use Illuminate\Http\Response as HttpResponse;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Str;
 
 class ResumeController extends Controller
 {
@@ -76,6 +78,21 @@ class ResumeController extends Controller
             $request->input('color'),
             $request->input('data', []),
         ));
+    }
+
+    public function pdf(Resume $resume, ResumeRenderer $renderer)
+    {
+        Gate::authorize('update', $resume);
+
+        $html = $renderer->render($resume->template, $resume->color, $resume->data, pdf: true);
+
+        $name = $resume->data['personal']['full_name'] ?? '' ?: $resume->title;
+        $filename = Str::slug($name).'-resume.pdf';
+
+        return Pdf::loadHTML($html)
+            ->setPaper('a4')
+            ->setOption('isRemoteEnabled', false)
+            ->download($filename);
     }
 
 }

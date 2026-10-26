@@ -6,7 +6,7 @@ use App\Models\Resume;
 
 class ResumeRenderer
 {
-    public function render(?string $template, ?string $color, mixed $data): string
+    public function render(?string $template, ?string $color, mixed $data, bool $pdf = false): string
     {
         $templates = config('resume.templates');
 
@@ -25,6 +25,7 @@ class ResumeRenderer
         return view("resumes.templates.{$template}", [
             'color' => $color,
             'data' => $data,
+            'pdf' => $pdf,
         ])->render();
     }
 }

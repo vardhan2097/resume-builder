@@ -14,6 +14,9 @@ Route::middleware(['auth', 'verified'])->group(function ()
 
     Route::post('resumes/{resume}/preview', [ResumeController::class, 'preview'])
         ->name('resumes.preview');
+
+    Route::get('resumes/{resume}/pdf', [ResumeController::class, 'pdf'])
+        ->name('resumes.pdf');
 });
 
 require __DIR__.'/settings.php';

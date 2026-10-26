@@ -18,8 +18,9 @@
     <meta charset="utf-8">
     <title>{{ $p['full_name'] ?: 'Resume' }}</title>
     <style>
-        @page { margin: 0; }
-        body { margin: 0; padding: 28px; font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif; font-size: 10px; line-height: 1.45; color: #374151; background: #ffffff; }
+
+        @page { margin: {{ $pdf ? '28px' : '0' }}; }
+        body { margin: 0; padding: {{ $pdf ? '0' : '28px' }}; font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif; font-size: 10px; line-height: 1.45; color: #374151; background: #ffffff; }
         table { border-collapse: collapse; width: 100%; }
         td { vertical-align: top; }
         p { margin: 0 0 8px; }

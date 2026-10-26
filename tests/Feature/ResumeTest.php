@@ -116,3 +116,21 @@ test('user cannot preview another users resume', function () {
         ->post(route('resumes.preview', $resume), [])
         ->assertForbidden();
 });
+
+test('user can download own resume as pdf', function () {
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+
+    $this->actingAs($user)
+        ->get(route('resumes.pdf', $resume))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf');
+});
+
+test('user cannot download another users pdf', function () {
+    $resume = User::factory()->create()->resumes()->create();
+
+    $this->actingAs(User::factory()->create())
+        ->get(route('resumes.pdf', $resume))
+        ->assertForbidden();
+});
