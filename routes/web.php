@@ -10,7 +10,7 @@ Route::middleware(['auth', 'verified'])->group(function ()
     Route::get('dashboard', fn () => redirect()->route('resumes.index'))->name('dashboard');
 
     Route::resource('resumes', ResumeController::class)
-        ->only(['index', 'store', 'edit', 'destroy']);
+        ->only(['index', 'store', 'edit', 'update', 'destroy']);
 });
 
 require __DIR__.'/settings.php';

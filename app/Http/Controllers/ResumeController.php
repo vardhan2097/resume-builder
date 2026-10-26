@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Http\Requests\UpdateResumeRequest;
 
 class ResumeController extends Controller
 {
@@ -37,8 +38,21 @@ class ResumeController extends Controller
         Gate::authorize('update', $resume);
 
         return Inertia::render('resumes/Edit', [
-            'resume' => $resume,
+            'resume' => [
+                'id' => $resume->id,
+                'title' => $resume->title,
+                'template' => $resume->template,
+                'color' => $resume->color,
+                'data' => array_replace(Resume::defaultData(), $resume->data ?? []),
+            ],
         ]);
+    }
+
+    public function update(UpdateResumeRequest $request, Resume $resume): RedirectResponse
+    {
+        $resume->update($request->validated());
+
+        return back();
     }
 
     public function destroy(Resume $resume): RedirectResponse
