@@ -11,6 +11,9 @@ Route::middleware(['auth', 'verified'])->group(function ()
 
     Route::resource('resumes', ResumeController::class)
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
+
+    Route::post('resumes/{resume}/preview', [ResumeController::class, 'preview'])
+        ->name('resumes.preview');
 });
 
 require __DIR__.'/settings.php';

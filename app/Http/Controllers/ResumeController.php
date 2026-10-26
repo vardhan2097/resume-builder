@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 use App\Http\Requests\UpdateResumeRequest;
+use App\Services\ResumeRenderer;
+use Illuminate\Http\Response as HttpResponse;
 
 class ResumeController extends Controller
 {
@@ -45,6 +47,7 @@ class ResumeController extends Controller
                 'color' => $resume->color,
                 'data' => array_replace(Resume::defaultData(), $resume->data ?? []),
             ],
+            'templates' => config('resume.templates'),
         ]);
     }
 
@@ -62,6 +65,17 @@ class ResumeController extends Controller
         $resume->delete();
 
         return redirect()->route('resumes.index');
+    }
+
+    public function preview(Request $request, Resume $resume, ResumeRenderer $renderer): HttpResponse
+    {
+        Gate::authorize('update', $resume);
+
+        return response($renderer->render(
+            $request->input('template'),
+            $request->input('color'),
+            $request->input('data', []),
+        ));
     }
 
 }

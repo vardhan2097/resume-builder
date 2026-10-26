@@ -78,3 +78,41 @@ test('user cannot update another users resume', function () {
 
     expect($resume->fresh()->title)->toBe('Mine');
 });
+
+test('preview renders the resume as html', function () {
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+
+    $data = Resume::defaultData();
+    $data['personal']['full_name'] = 'Shrivardhan Joshi';
+
+    $this->actingAs($user)
+        ->post(route('resumes.preview', $resume), [
+            'template' => 'classic',
+            'color' => '#0f766e',
+            'data' => $data,
+        ])
+        ->assertOk()
+        ->assertSee('Shrivardhan Joshi');
+});
+
+test('preview escapes html in user input', function () {
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+
+    $data = Resume::defaultData();
+    $data['personal']['full_name'] = '<script>alert(1)</script>';
+
+    $this->actingAs($user)
+        ->post(route('resumes.preview', $resume), ['data' => $data])
+        ->assertOk()
+        ->assertDontSee('<script>alert(1)</script>', false);
+});
+
+test('user cannot preview another users resume', function () {
+    $resume = User::factory()->create()->resumes()->create();
+
+    $this->actingAs(User::factory()->create())
+        ->post(route('resumes.preview', $resume), [])
+        ->assertForbidden();
+});

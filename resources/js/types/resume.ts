@@ -81,3 +81,9 @@ export type Resume = {
     color: string;
     data: ResumeData;
 };
+
+export type TemplateMeta = {
+    name: string;
+    photo: boolean;
+    palettes: string[];
+};
