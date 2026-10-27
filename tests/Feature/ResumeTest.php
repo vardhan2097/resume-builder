@@ -442,9 +442,12 @@ test('ratings can be hidden per section in the preview', function () {
         ->assertSee(['Laravel', 'Docker', 'Konkani'])
         ->getContent();
 
-    // Only the tools section still draws a rating bar.
+    // Only the tools section still draws a rating bar; the others are compact tags.
     expect(substr_count($html, 'class="bar-fill"'))->toBe(1)
-        ->and($html)->toContain('width: 60%');
+        ->and($html)->toContain('width: 60%')
+        ->and($html)->toContain('<span class="tag">Laravel</span>')
+        ->and($html)->toContain('<span class="tag">Konkani</span>')
+        ->and($html)->not->toContain('<span class="tag">Docker</span>');
 });
 
 test('ratings show by default, including for resumes saved before the setting existed', function () {

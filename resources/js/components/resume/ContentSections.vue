@@ -20,12 +20,14 @@ const content = defineModel<ResumeData>({ required: true });
     <LevelSection
         v-model="content.skills"
         v-model:show-levels="content.settings.show_levels.skills"
+        :max="40"
         title="Skills"
         placeholder="e.g. Laravel"
     />
     <LevelSection
         v-model="content.tools"
         v-model:show-levels="content.settings.show_levels.tools"
+        :max="30"
         title="Software / Tools"
         placeholder="e.g. VS Code"
     />
@@ -34,6 +36,7 @@ const content = defineModel<ResumeData>({ required: true });
     <LevelSection
         v-model="content.languages"
         v-model:show-levels="content.settings.show_levels.languages"
+        :max="15"
         title="Languages"
         placeholder="e.g. English"
     />

@@ -47,6 +47,9 @@
         .bar { height: 5px; margin-top: 2px; background: #e5e7eb; border-radius: 3px; }
         .bar-fill { height: 5px; background: {{ $color }}; border-radius: 3px; }
 
+        .tags { margin-top: 6px; line-height: 1.9; }
+        .tag { display: inline-block; padding: 0 6px; margin: 0 3px 3px 0; font-size: 9px; line-height: 1.7; color: #111827; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 3px; }
+
         .item { margin-bottom: 10px; }
         .item-title { font-size: 11.5px; font-weight: bold; color: #111827; }
         .item-meta { margin: 1px 0 4px; font-size: 8.5px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -77,21 +80,28 @@
     </tr>
 </table>
 
-<table style="margin-top: 10px;">
+<table style="margin-top: 10px; table-layout: fixed;">
     <tr>
         <td class="sidebar">
             @foreach (['skills' => ['Skills', $skills], 'tools' => ['Software', $tools], 'languages' => ['Languages', $languages]] as $section => [$label, $items])
                 @if (count($items))
                     <div class="heading">{{ $label }}</div>
                     <div class="rule"></div>
-                    @foreach ($items as $item)
-                        <div class="level-name">{{ $item['name'] }}</div>
-                        @if (F::showLevels($data, $section))
+                    @if (F::showLevels($data, $section))
+                        @foreach ($items as $item)
+                            <div class="level-name">{{ $item['name'] }}</div>
                             <div class="bar">
                                 <div class="bar-fill" style="width: {{ (int) $item['level'] * 20 }}%;"></div>
                             </div>
-                        @endif
-                    @endforeach
+                        @endforeach
+                    @else
+                        {{-- No ratings: names wrap as compact tags instead of one per line. --}}
+                        <div class="tags">
+                            @foreach ($items as $item)
+                                <span class="tag">{{ $item['name'] }}</span>
+                            @endforeach
+                        </div>
+                    @endif
                 @endif
             @endforeach
 
