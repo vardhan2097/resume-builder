@@ -4,8 +4,15 @@ use App\Http\Controllers\GuestResumeController;
 use App\Http\Controllers\ResumeController;
 use App\Http\Controllers\ResumeImportController;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 Route::inertia('/', 'Welcome')->name('home');
+
+Route::get('privacy', fn () => Inertia::render('public/Privacy', [
+    'contactEmail' => config('resume.contact_email'),
+    'warnAfterDays' => config('resume.inactivity.warn_after_days'),
+    'deleteAfterDays' => config('resume.inactivity.delete_after_days'),
+]))->name('privacy');
 
 // Not "/build": that is Vite's public/build asset folder, which the web server would serve instead.
 Route::get('builder', [GuestResumeController::class, 'show'])->name('build');

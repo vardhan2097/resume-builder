@@ -3,7 +3,7 @@ import { Link, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import { Button } from '@/components/ui/button';
-import { home, login, register } from '@/routes';
+import { home, login, privacy, register } from '@/routes';
 import { index as myResumes } from '@/routes/resumes';
 
 const page = usePage();
@@ -48,6 +48,9 @@ const user = computed(() => page.props.auth.user ?? null);
                 <span
                     >© {{ new Date().getFullYear() }}
                     {{ page.props.name }}</span
+                >
+                <Link :href="privacy()" class="hover:text-foreground"
+                    >Privacy policy</Link
                 >
             </div>
         </footer>

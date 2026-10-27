@@ -4,6 +4,9 @@ return [
     'default_template' => 'classic',
     'default_color' => '#0f766e',
 
+    // Shown on the privacy page for privacy / grievance requests (DPDP Act).
+    'contact_email' => env('PRIVACY_CONTACT_EMAIL', 'privacy@example.com'),
+
     // Accounts inactive this long get a warning email, then are deleted
     // (with their resumes and photos) if they still don't come back.
     'inactivity' => [
