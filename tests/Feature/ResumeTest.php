@@ -549,3 +549,82 @@ test('resumes saved before github existed get an empty github field', function (
         ->get(route('resumes.edit', $resume))
         ->assertInertia(fn ($page) => $page->where('resume.data.personal.github', ''));
 });
+
+test('a partial saved section order is not padded with duplicates', function () {
+    $data = Resume::withDefaults(['settings' => ['section_order' => ['references', 'experience']]]);
+
+    expect($data['settings']['section_order'])->toBe(['references', 'experience'])
+        ->and($data['settings']['show_levels'])->toBe(['skills' => true, 'tools' => true, 'languages' => true]);
+});
+
+test('section order is saved', function () {
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+    $data = Resume::defaultData();
+    $data['settings']['section_order'] = array_reverse(Resume::SECTIONS);
+
+    $this->actingAs($user)
+        ->put(route('resumes.update', $resume), validPayload(['data' => $data]))
+        ->assertSessionHasNoErrors();
+
+    expect($resume->fresh()->data['settings']['section_order'])->toBe(array_reverse(Resume::SECTIONS));
+});
+
+test('invalid section orders are rejected', function (array $order, string $error) {
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+    $data = Resume::defaultData();
+    $data['settings']['section_order'] = $order;
+
+    $this->actingAs($user)
+        ->put(route('resumes.update', $resume), validPayload(['data' => $data]))
+        ->assertSessionHasErrors($error);
+})->with([
+    'unknown section' => [['experience', 'photos'], 'data.settings.section_order.1'],
+    'duplicate' => [['experience', 'experience'], 'data.settings.section_order.0'],
+]);
+
+function orderedResumeData(array $order): array
+{
+    $data = Resume::defaultData();
+    $data['experience'][] = ['id' => 'e1', 'job_title' => 'Backend Dev', 'company' => 'TenTwenty', 'location' => '', 'start_date' => '2024-01', 'end_date' => '', 'current' => true, 'description' => ''];
+    $data['projects'][] = ['id' => 'p1', 'name' => 'Resume Builder', 'duration' => '', 'link' => '', 'description' => ''];
+    $data['education'][] = ['id' => 'd1', 'degree' => 'BSc CS', 'institution' => 'Goa University', 'location' => '', 'start_date' => '', 'end_date' => '', 'score' => '', 'description' => ''];
+    $data['certifications'][] = ['id' => 'c1', 'name' => 'AWS SA', 'issuer' => 'Amazon', 'date' => '2024-05'];
+    $data['skills'][] = ['id' => 's1', 'name' => 'Laravel', 'level' => 4];
+    $data['tools'][] = ['id' => 't1', 'name' => 'Docker', 'level' => 3];
+    $data['settings']['section_order'] = $order;
+
+    return $data;
+}
+
+test('classic template puts education and certifications in the sidebar and follows the order', function () {
+    $data = orderedResumeData(['projects', 'tools', 'certifications', 'experience', 'skills', 'education']);
+
+    $html = app(ResumeRenderer::class)->render('classic', '#0f766e', $data);
+    [$sidebar, $main] = explode('<td class="main">', $html);
+
+    expect($sidebar)->toContain('Goa University', 'AWS SA')
+        ->and($main)->not->toContain('Goa University')
+        ->and($main)->not->toContain('AWS SA')
+        // Sidebar: tools, certifications, skills, education.
+        ->and(strpos($sidebar, 'Docker'))->toBeLessThan(strpos($sidebar, 'AWS SA'))
+        ->and(strpos($sidebar, 'AWS SA'))->toBeLessThan(strpos($sidebar, 'Laravel'))
+        ->and(strpos($sidebar, 'Laravel'))->toBeLessThan(strpos($sidebar, 'Goa University'))
+        // Main: projects before employment history.
+        ->and(strpos($main, 'Resume Builder'))->toBeLessThan(strpos($main, 'TenTwenty'));
+});
+
+test('docx follows the section order', function () {
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create(['data' => orderedResumeData(['education', 'projects', 'experience'])]);
+
+    $response = $this->actingAs($user)->get(route('resumes.docx', $resume))->assertOk();
+    $zip = new ZipArchive;
+    $zip->open($response->getFile()->getPathname());
+    $xml = $zip->getFromName('word/document.xml');
+    $zip->close();
+
+    expect(strpos($xml, 'EDUCATION'))->toBeLessThan(strpos($xml, 'PROJECTS'))
+        ->and(strpos($xml, 'PROJECTS'))->toBeLessThan(strpos($xml, 'EMPLOYMENT HISTORY'));
+});

@@ -50,7 +50,12 @@
         .tags { margin-top: 6px; line-height: 1.9; }
         .tag { display: inline-block; padding: 0 6px; margin: 0 3px 3px 0; font-size: 9px; line-height: 1.7; color: #111827; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 3px; }
 
+        .side-item { margin: 6px 0 8px; font-size: 9.5px; }
+        .side-title { font-weight: bold; color: #111827; }
+        .side-meta { margin-top: 1px; font-size: 8.5px; color: #6b7280; }
+
         .item { margin-bottom: 10px; }
+        .link { text-transform: none; letter-spacing: 0; }
         .item-title { font-size: 11.5px; font-weight: bold; color: #111827; }
         .item-meta { margin: 1px 0 4px; font-size: 8.5px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
     </style>
@@ -83,35 +88,86 @@
 <table style="margin-top: 10px; table-layout: fixed;">
     <tr>
         <td class="sidebar">
-            @foreach (['skills' => ['Skills', $skills], 'tools' => ['Software', $tools], 'languages' => ['Languages', $languages]] as $section => [$label, $items])
-                @if (count($items))
-                    <div class="heading">{{ $label }}</div>
-                    <div class="rule"></div>
-                    @if (F::showLevels($data, $section))
-                        @foreach ($items as $item)
-                            <div class="level-name">{{ $item['name'] }}</div>
-                            <div class="bar">
-                                <div class="bar-fill" style="width: {{ (int) $item['level'] * 20 }}%;"></div>
-                            </div>
-                        @endforeach
-                    @else
-                        {{-- No ratings: names wrap as compact tags instead of one per line. --}}
-                        <div class="tags">
-                            @foreach ($items as $item)
-                                <span class="tag">{{ $item['name'] }}</span>
-                            @endforeach
-                        </div>
-                    @endif
-                @endif
-            @endforeach
+            @foreach (F::sectionOrder($data, ['skills', 'tools', 'languages', 'education', 'certifications', 'hobbies']) as $section)
+                @switch($section)
+                    @case('skills')
+                    @case('tools')
+                    @case('languages')
+                        @php($items = ['skills' => $skills, 'tools' => $tools, 'languages' => $languages][$section])
+                        @if (count($items))
+                            <div class="heading">{{ ['skills' => 'Skills', 'tools' => 'Software / Tools', 'languages' => 'Languages'][$section] }}</div>
+                            <div class="rule"></div>
+                            @if (F::showLevels($data, $section))
+                                @foreach ($items as $item)
+                                    <div class="level-name">{{ $item['name'] }}</div>
+                                    <div class="bar">
+                                        <div class="bar-fill" style="width: {{ (int) $item['level'] * 20 }}%;"></div>
+                                    </div>
+                                @endforeach
+                            @else
+                                {{-- No ratings: names wrap as compact tags instead of one per line. --}}
+                                <div class="tags">
+                                    @foreach ($items as $item)
+                                        <span class="tag">{{ $item['name'] }}</span>
+                                    @endforeach
+                                </div>
+                            @endif
+                        @endif
+                        @break
 
-            @if (count($hobbies))
-                <div class="heading">Hobbies</div>
-                <div class="rule"></div>
-                @foreach ($hobbies as $hobby)
-                    <div>{{ $hobby }}</div>
-                @endforeach
-            @endif
+                    @case('education')
+                        @if (count($education))
+                            <div class="heading">Education</div>
+                            <div class="rule"></div>
+                            @foreach ($education as $edu)
+                                <div class="side-item">
+                                    @if ($edu['degree'])
+                                        <div class="side-title">{{ $edu['degree'] }}</div>
+                                    @endif
+                                    @if ($edu['institution'])
+                                        <div class="{{ $edu['degree'] ? '' : 'side-title' }}">{{ $edu['institution'] }}</div>
+                                    @endif
+                                    @if (count(F::strings([F::range($edu['start_date'] ?? null, $edu['end_date'] ?? null), $edu['score'] ?? '', $edu['location'] ?? ''])))
+                                        <div class="side-meta">{{ implode(' · ', F::strings([F::range($edu['start_date'] ?? null, $edu['end_date'] ?? null), $edu['score'] ?? '', $edu['location'] ?? ''])) }}</div>
+                                    @endif
+                                    @if (count(F::lines($edu['description'] ?? '')))
+                                        <ul>
+                                            @foreach (F::lines($edu['description'] ?? '') as $line)
+                                                <li>{{ $line }}</li>
+                                            @endforeach
+                                        </ul>
+                                    @endif
+                                </div>
+                            @endforeach
+                        @endif
+                        @break
+
+                    @case('certifications')
+                        @if (count($certifications))
+                            <div class="heading">Certifications</div>
+                            <div class="rule"></div>
+                            @foreach ($certifications as $cert)
+                                <div class="side-item">
+                                    <div class="side-title">{{ $cert['name'] }}</div>
+                                    @if (count(F::strings([$cert['issuer'] ?? '', F::month($cert['date'] ?? null)])))
+                                        <div class="side-meta">{{ implode(' · ', F::strings([$cert['issuer'] ?? '', F::month($cert['date'] ?? null)])) }}</div>
+                                    @endif
+                                </div>
+                            @endforeach
+                        @endif
+                        @break
+
+                    @case('hobbies')
+                        @if (count($hobbies))
+                            <div class="heading">Hobbies</div>
+                            <div class="rule"></div>
+                            @foreach ($hobbies as $hobby)
+                                <div>{{ $hobby }}</div>
+                            @endforeach
+                        @endif
+                        @break
+                @endswitch
+            @endforeach
         </td>
 
         <td class="main">
@@ -121,94 +177,73 @@
                 @include('resumes.partials.text', ['text' => $p['summary']])
             @endif
 
-            @if (count($experience))
-                <div class="heading">Employment History</div>
-                <div class="rule"></div>
-                @foreach ($experience as $job)
-                    <div class="item">
-                        <div class="item-title">
-                            {{ $job['job_title'] }}@if ($job['job_title'] && $job['company']), @endif{{ $job['company'] }}
-                        </div>
-                        <div class="item-meta">
-                            {{ F::range($job['start_date'] ?? null, $job['end_date'] ?? null, (bool) ($job['current'] ?? false)) }}
-                            @if (! empty($job['location'])) · {{ $job['location'] }} @endif
-                        </div>
-                        @if (count(F::lines($job['description'] ?? '')))
-                            <ul>
-                                @foreach (F::lines($job['description'] ?? '') as $line)
-                                    <li>{{ $line }}</li>
-                                @endforeach
-                            </ul>
+            @foreach (F::sectionOrder($data, ['experience', 'projects', 'references']) as $section)
+                @switch($section)
+                    @case('experience')
+                        @if (count($experience))
+                            <div class="heading">Employment History</div>
+                            <div class="rule"></div>
+                            @foreach ($experience as $job)
+                                <div class="item">
+                                    <div class="item-title">
+                                        {{ $job['job_title'] }}@if ($job['job_title'] && $job['company']), @endif{{ $job['company'] }}
+                                    </div>
+                                    <div class="item-meta">
+                                        {{ F::range($job['start_date'] ?? null, $job['end_date'] ?? null, (bool) ($job['current'] ?? false)) }}
+                                        @if (! empty($job['location'])) · {{ $job['location'] }} @endif
+                                    </div>
+                                    @if (count(F::lines($job['description'] ?? '')))
+                                        <ul>
+                                            @foreach (F::lines($job['description'] ?? '') as $line)
+                                                <li>{{ $line }}</li>
+                                            @endforeach
+                                        </ul>
+                                    @endif
+                                </div>
+                            @endforeach
                         @endif
-                    </div>
-                @endforeach
-            @endif
+                        @break
 
-            @if (count($education))
-                <div class="heading">Education</div>
-                <div class="rule"></div>
-                @foreach ($education as $edu)
-                    <div class="item">
-                        <div class="item-title">
-                            {{ $edu['degree'] }}@if ($edu['degree'] && $edu['institution']), @endif{{ $edu['institution'] }}
-                        </div>
-                        <div class="item-meta">
-                            {{ F::range($edu['start_date'] ?? null, $edu['end_date'] ?? null) }}
-                            @if (! empty($edu['score'])) · {{ $edu['score'] }} @endif
-                        </div>
-                        @if (count(F::lines($edu['description'] ?? '')))
-                            <ul>
-                                @foreach (F::lines($edu['description'] ?? '') as $line)
-                                    <li>{{ $line }}</li>
-                                @endforeach
-                            </ul>
+                    @case('projects')
+                        @if (count($projects))
+                            <div class="heading">Projects</div>
+                            <div class="rule"></div>
+                            @foreach ($projects as $project)
+                                <div class="item">
+                                    <div class="item-title">{{ $project['name'] }}</div>
+                                    @if (! empty($project['duration']) || ! empty($project['link']))
+                                        <div class="item-meta">
+                                            {{ $project['duration'] ?? '' }}@if (! empty($project['duration']) && ! empty($project['link'])) · @endif
+                                            @if (! empty($project['link']))<span class="link">{{ $project['link'] }}</span>@endif
+                                        </div>
+                                    @endif
+                                    @if (count(F::lines($project['description'] ?? '')))
+                                        <ul>
+                                            @foreach (F::lines($project['description'] ?? '') as $line)
+                                                <li>{{ $line }}</li>
+                                            @endforeach
+                                        </ul>
+                                    @endif
+                                </div>
+                            @endforeach
                         @endif
-                    </div>
-                @endforeach
-            @endif
+                        @break
 
-            @if (count($projects))
-                <div class="heading">Projects</div>
-                <div class="rule"></div>
-                @foreach ($projects as $project)
-                    <div class="item">
-                        <div class="item-title">{{ $project['name'] }}</div>
-                        @if (count(F::strings([$project['duration'] ?? '', $project['link'] ?? ''])))
-                            <div class="item-meta">{{ implode(' · ', F::strings([$project['duration'] ?? '', $project['link'] ?? ''])) }}</div>
+                    @case('references')
+                        @if (count($references))
+                            <div class="heading">References</div>
+                            <div class="rule"></div>
+                            @foreach ($references as $ref)
+                                <div class="item">
+                                    <div class="item-title">{{ $ref['name'] }}</div>
+                                    <div>{{ implode(', ', F::strings([$ref['position'] ?? '', $ref['company'] ?? ''])) }}</div>
+                                    <div>{{ implode(' | ', F::strings([$ref['phone'] ?? '', $ref['email'] ?? ''])) }}</div>
+                                </div>
+                            @endforeach
                         @endif
-                        @if (count(F::lines($project['description'] ?? '')))
-                            <ul>
-                                @foreach (F::lines($project['description'] ?? '') as $line)
-                                    <li>{{ $line }}</li>
-                                @endforeach
-                            </ul>
-                        @endif
-                    </div>
-                @endforeach
-            @endif
-
-            @if (count($certifications))
-                <div class="heading">Certifications</div>
-                <div class="rule"></div>
-                @foreach ($certifications as $cert)
-                    <div class="item">
-                        <div class="item-title">{{ $cert['name'] }}</div>
-                        <div class="item-meta">{{ implode(' · ', F::strings([$cert['issuer'] ?? '', F::month($cert['date'] ?? null)])) }}</div>
-                    </div>
-                @endforeach
-            @endif
-
-            @if (count($references))
-                <div class="heading">References</div>
-                <div class="rule"></div>
-                @foreach ($references as $ref)
-                    <div class="item">
-                        <div class="item-title">{{ $ref['name'] }}</div>
-                        <div>{{ implode(', ', F::strings([$ref['position'] ?? '', $ref['company'] ?? ''])) }}</div>
-                        <div>{{ implode(' | ', F::strings([$ref['phone'] ?? '', $ref['email'] ?? ''])) }}</div>
-                    </div>
-                @endforeach
-            @endif
+                        @break
+                @endswitch
+            @endforeach
         </td>
     </tr>
 </table>

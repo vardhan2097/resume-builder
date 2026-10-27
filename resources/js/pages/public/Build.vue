@@ -9,6 +9,7 @@ import {
 } from '@/actions/App/Http/Controllers/GuestResumeController';
 import ContentSections from '@/components/resume/ContentSections.vue';
 import DesignSection from '@/components/resume/DesignSection.vue';
+import SectionOrder from '@/components/resume/SectionOrder.vue';
 import ResumePreview from '@/components/resume/ResumePreview.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -198,6 +199,8 @@ function startOver() {
                 v-model:color="resume.color"
                 :templates="templates"
             />
+
+            <SectionOrder v-model="resume.data.settings.section_order" />
 
             <section
                 v-if="templates[resume.template]?.photo"

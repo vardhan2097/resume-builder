@@ -42,6 +42,15 @@ class Resume extends Model
         });
     }
 
+    /**
+     * Sections the user can reorder, in their default order. Personal details
+     * and the summary always come first.
+     */
+    public const SECTIONS = [
+        'experience', 'education', 'skills', 'tools', 'projects',
+        'certifications', 'languages', 'hobbies', 'references',
+    ];
+
     public static function defaultData(): array
     {
         return [
@@ -72,6 +81,7 @@ class Resume extends Model
                     'tools' => true,
                     'languages' => true,
                 ],
+                'section_order' => self::SECTIONS,
             ],
         ];
     }
@@ -86,7 +96,10 @@ class Resume extends Model
         $data = array_replace($defaults, (array) $data);
 
         $data['personal'] = array_replace($defaults['personal'], (array) $data['personal']);
-        $data['settings'] = array_replace_recursive($defaults['settings'], (array) $data['settings']);
+        // Not array_replace_recursive: that would merge section_order by index.
+        $settings = array_replace($defaults['settings'], (array) $data['settings']);
+        $settings['show_levels'] = array_replace($defaults['settings']['show_levels'], (array) $settings['show_levels']);
+        $data['settings'] = $settings;
 
         return $data;
     }

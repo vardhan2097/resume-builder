@@ -4,6 +4,7 @@ import { useEventListener, watchDebounced } from '@vueuse/core';
 import { computed, ref } from 'vue';
 import ContentSections from '@/components/resume/ContentSections.vue';
 import DesignSection from '@/components/resume/DesignSection.vue';
+import SectionOrder from '@/components/resume/SectionOrder.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { docx, index, pdf, preview, update } from '@/routes/resumes';
@@ -205,6 +206,8 @@ function download(kind: 'pdf' | 'docx') {
                 v-model:color="form.color"
                 :templates="templates"
             />
+
+            <SectionOrder v-model="form.content.settings.section_order" />
 
             <PhotoSection
                 v-if="templates[form.template]?.photo"

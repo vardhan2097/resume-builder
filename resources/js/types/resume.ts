@@ -79,9 +79,23 @@ export type ResumeData = {
 /** Sections whose items carry a 1–5 level. */
 export type LevelSectionKey = 'skills' | 'tools' | 'languages';
 
+/** Sections the user can reorder (mirrors Resume::SECTIONS). */
+export type SectionKey =
+    | 'experience'
+    | 'education'
+    | 'skills'
+    | 'tools'
+    | 'projects'
+    | 'certifications'
+    | 'languages'
+    | 'hobbies'
+    | 'references';
+
 export type ResumeSettings = {
     /** Show the rating next to each item, per section. */
     show_levels: Record<LevelSectionKey, boolean>;
+    /** Order of the sections on the resume and in the editor. */
+    section_order: SectionKey[];
 };
 
 export type Resume = {

@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Models\Resume;
+
 /**
  * Validation rules for a resume's editable fields, shared by the editor
  * (UpdateResumeRequest), the guest endpoints and the guest claim.
@@ -92,9 +94,11 @@ class ResumeRules
             'data.references.*.email' => ['nullable', 'email', 'max:150'],
 
             // Optional so data saved before settings existed is still accepted.
-            'data.settings' => ['sometimes', 'array:show_levels'],
+            'data.settings' => ['sometimes', 'array:show_levels,section_order'],
             'data.settings.show_levels' => ['sometimes', 'array:skills,tools,languages'],
             'data.settings.show_levels.*' => ['boolean'],
+            'data.settings.section_order' => ['sometimes', 'array', 'max:'.count(Resume::SECTIONS)],
+            'data.settings.section_order.*' => ['string', 'distinct', 'in:'.implode(',', Resume::SECTIONS)],
         ];
 
         if ($strict) {

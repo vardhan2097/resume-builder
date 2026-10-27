@@ -43,17 +43,20 @@ class ResumeDocxBuilder
             $this->paragraphs($section, $p['summary']);
         }
 
-        $this->experience($section, F::filled($data['experience'], 'job_title', 'company'));
-        $this->education($section, F::filled($data['education'], 'degree', 'institution'));
-        $this->projects($section, F::filled($data['projects'], 'name'));
-
-        $this->inlineList($section, 'Skills', array_column(F::filled($data['skills'], 'name'), 'name'));
-        $this->inlineList($section, 'Software & Tools', array_column(F::filled($data['tools'], 'name'), 'name'));
-        $this->inlineList($section, 'Languages', array_column(F::filled($data['languages'], 'name'), 'name'));
-        $this->inlineList($section, 'Hobbies', F::strings($data['hobbies']));
-
-        $this->certifications($section, F::filled($data['certifications'], 'name'));
-        $this->references($section, F::filled($data['references'], 'name'));
+        // One column, so the user's section order applies as is.
+        foreach (F::sectionOrder($data) as $key) {
+            match ($key) {
+                'experience' => $this->experience($section, F::filled($data['experience'], 'job_title', 'company')),
+                'education' => $this->education($section, F::filled($data['education'], 'degree', 'institution')),
+                'projects' => $this->projects($section, F::filled($data['projects'], 'name')),
+                'skills' => $this->inlineList($section, 'Skills', array_column(F::filled($data['skills'], 'name'), 'name')),
+                'tools' => $this->inlineList($section, 'Software & Tools', array_column(F::filled($data['tools'], 'name'), 'name')),
+                'languages' => $this->inlineList($section, 'Languages', array_column(F::filled($data['languages'], 'name'), 'name')),
+                'hobbies' => $this->inlineList($section, 'Hobbies', F::strings($data['hobbies'])),
+                'certifications' => $this->certifications($section, F::filled($data['certifications'], 'name')),
+                'references' => $this->references($section, F::filled($data['references'], 'name')),
+            };
+        }
 
         $path = tempnam(sys_get_temp_dir(), 'resume_');
         IOFactory::createWriter($word, 'Word2007')->save($path);

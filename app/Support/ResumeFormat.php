@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Resume;
 use Carbon\Carbon;
 
 class ResumeFormat
@@ -57,6 +58,25 @@ class ResumeFormat
     public static function showLevels(array $data, string $section): bool
     {
         return (bool) ($data['settings']['show_levels'][$section] ?? true);
+    }
+
+    /**
+     * The user's section order, limited to $only (e.g. the sections one column of a
+     * template shows). Unknown or repeated keys are dropped and any section missing
+     * from the saved order is appended in its default position.
+     *
+     * @param  list<string>|null  $only
+     * @return list<string>
+     */
+    public static function sectionOrder(array $data, ?array $only = null): array
+    {
+        $saved = array_filter((array) ($data['settings']['section_order'] ?? []), 'is_string');
+        $order = array_values(array_unique([
+            ...array_intersect($saved, Resume::SECTIONS),
+            ...Resume::SECTIONS,
+        ]));
+
+        return $only === null ? $order : array_values(array_intersect($order, $only));
     }
 
     public static function filled(mixed $items, string ...$keys): array

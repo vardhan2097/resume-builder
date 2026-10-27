@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { nextTick, ref } from 'vue';
+import { useDragSort } from '@/composables/useDragSort';
 import { Input } from '@/components/ui/input';
 import type { LevelItem } from '@/types/resume';
 
@@ -14,6 +15,8 @@ const items = defineModel<LevelItem[]>({ required: true });
 const showLevels = defineModel<boolean>('showLevels', { default: true });
 
 const draft = ref('');
+const list = ref<HTMLElement | null>(null);
+const { dragging, onPointerDown, onKeydown } = useDragSort(items, list);
 const DEFAULT_LEVEL = 3;
 
 /** Add what was typed; a comma-separated paste adds several at once. */
@@ -70,12 +73,26 @@ async function onPaste() {
             </label>
         </div>
 
-        <div v-if="items.length" class="mb-3 flex flex-wrap gap-2">
+        <div v-if="items.length" ref="list" class="mb-3 flex flex-wrap gap-2">
             <span
                 v-for="(item, index) in items"
                 :key="item.id"
+                :data-sort-index="index"
                 class="inline-flex items-center gap-2 rounded-full bg-muted py-1 pr-2 pl-3 text-sm"
+                :class="{
+                    'opacity-60 ring-2 ring-primary': dragging === index,
+                }"
             >
+                <button
+                    type="button"
+                    data-sort-handle
+                    class="-ml-1 cursor-grab touch-none text-muted-foreground select-none hover:text-foreground active:cursor-grabbing"
+                    :aria-label="`Reorder ${item.name}: drag, or use the arrow keys`"
+                    @pointerdown="onPointerDown(index, $event)"
+                    @keydown="onKeydown(index, $event)"
+                >
+                    ⠿
+                </button>
                 {{ item.name || 'Untitled' }}
 
                 <!-- Hidden, not cleared: turning ratings back on restores them. -->
