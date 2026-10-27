@@ -144,6 +144,13 @@
                             {{ F::range($edu['start_date'] ?? null, $edu['end_date'] ?? null) }}
                             @if (! empty($edu['score'])) · {{ $edu['score'] }} @endif
                         </div>
+                        @if (count(F::lines($edu['description'] ?? '')))
+                            <ul>
+                                @foreach (F::lines($edu['description'] ?? '') as $line)
+                                    <li>{{ $line }}</li>
+                                @endforeach
+                            </ul>
+                        @endif
                     </div>
                 @endforeach
             @endif
@@ -154,14 +161,16 @@
                 @foreach ($projects as $project)
                     <div class="item">
                         <div class="item-title">{{ $project['name'] }}</div>
-                        @if (! empty($project['duration']))
-                            <div class="item-meta">{{ $project['duration'] }}</div>
+                        @if (count(F::strings([$project['duration'] ?? '', $project['link'] ?? ''])))
+                            <div class="item-meta">{{ implode(' · ', F::strings([$project['duration'] ?? '', $project['link'] ?? ''])) }}</div>
                         @endif
-                        <ul>
-                            @foreach (F::lines($project['description'] ?? '') as $line)
-                                <li>{{ $line }}</li>
-                            @endforeach
-                        </ul>
+                        @if (count(F::lines($project['description'] ?? '')))
+                            <ul>
+                                @foreach (F::lines($project['description'] ?? '') as $line)
+                                    <li>{{ $line }}</li>
+                                @endforeach
+                            </ul>
+                        @endif
                     </div>
                 @endforeach
             @endif
@@ -172,7 +181,7 @@
                 @foreach ($certifications as $cert)
                     <div class="item">
                         <div class="item-title">{{ $cert['name'] }}</div>
-                        <div class="item-meta">{{ $cert['issuer'] ?? '' }} {{ $cert['date'] ?? '' }}</div>
+                        <div class="item-meta">{{ implode(' · ', F::strings([$cert['issuer'] ?? '', F::month($cert['date'] ?? null)])) }}</div>
                     </div>
                 @endforeach
             @endif
@@ -183,8 +192,8 @@
                 @foreach ($references as $ref)
                     <div class="item">
                         <div class="item-title">{{ $ref['name'] }}</div>
-                        <div>{{ $ref['position'] ?? '' }} {{ $ref['company'] ?? '' }}</div>
-                        <div>{{ $ref['phone'] ?? '' }} {{ $ref['email'] ?? '' }}</div>
+                        <div>{{ implode(', ', F::strings([$ref['position'] ?? '', $ref['company'] ?? ''])) }}</div>
+                        <div>{{ implode(' | ', F::strings([$ref['phone'] ?? '', $ref['email'] ?? ''])) }}</div>
                     </div>
                 @endforeach
             @endif

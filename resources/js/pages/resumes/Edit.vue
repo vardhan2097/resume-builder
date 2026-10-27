@@ -9,6 +9,11 @@ import { docx, index, pdf, update } from '@/routes/resumes';
 import ResumePreview from '@/components/resume/ResumePreview.vue';
 import type { Resume, TemplateMeta } from '@/types/resume';
 import PhotoSection from '@/components/resume/PhotoSection.vue';
+import CertificationsSection from '@/components/resume/CertificationsSection.vue';
+import EducationSection from '@/components/resume/EducationSection.vue';
+import HobbiesSection from '@/components/resume/HobbiesSection.vue';
+import ProjectsSection from '@/components/resume/ProjectsSection.vue';
+import ReferencesSection from '@/components/resume/ReferencesSection.vue';
 
 const props = defineProps<{
     resume: Resume;
@@ -146,6 +151,7 @@ function download(kind: 'pdf' | 'docx') {
 
             <PersonalSection v-model="form.content.personal" />
             <ExperienceSection v-model="form.content.experience" />
+            <EducationSection v-model="form.content.education" />
             <LevelSection
                 v-model="form.content.skills"
                 title="Skills"
@@ -156,11 +162,15 @@ function download(kind: 'pdf' | 'docx') {
                 title="Software / Tools"
                 placeholder="e.g. VS Code"
             />
+            <ProjectsSection v-model="form.content.projects" />
+            <CertificationsSection v-model="form.content.certifications" />
             <LevelSection
                 v-model="form.content.languages"
                 title="Languages"
                 placeholder="e.g. English"
             />
+            <HobbiesSection v-model="form.content.hobbies" />
+            <ReferencesSection v-model="form.content.references" />
         </form>
 
         <div class="hidden lg:block">

@@ -184,7 +184,7 @@ class ResumeDocxBuilder
 
         foreach ($items as $cert) {
             $this->itemTitle($section, (string) $cert['name']);
-            $this->meta($section, $this->joinParts(' · ', $cert['issuer'] ?? '', $cert['date'] ?? ''));
+            $this->meta($section, $this->joinParts(' · ', $cert['issuer'] ?? '', F::month($cert['date'] ?? null)));
         }
     }
 
