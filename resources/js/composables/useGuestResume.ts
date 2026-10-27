@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/vue3';
-import { watchDebounced } from '@vueuse/core';
+import { useEventListener, watchDebounced } from '@vueuse/core';
 import { reactive } from 'vue';
 import { claim } from '@/actions/App/Http/Controllers/ResumeController';
 import type { GuestResume, ResumeData } from '@/types/resume';
@@ -89,6 +89,9 @@ export function useGuestResume(defaults: GuestResume) {
     });
 
     watchDebounced(resume, () => write(resume), { debounce: 500, deep: true });
+
+    // Don't lose the last keystrokes still waiting on the debounce when the tab closes.
+    useEventListener(window, 'pagehide', () => write(resume));
 
     function reset() {
         Object.assign(resume, copy(defaults));

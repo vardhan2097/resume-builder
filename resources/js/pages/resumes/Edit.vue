@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
+import { useEventListener, watchDebounced } from '@vueuse/core';
+import { computed, ref } from 'vue';
 import ContentSections from '@/components/resume/ContentSections.vue';
 import DesignSection from '@/components/resume/DesignSection.vue';
 import { Button } from '@/components/ui/button';
@@ -8,6 +10,7 @@ import { docx, index, pdf, preview, update } from '@/routes/resumes';
 import ResumePreview from '@/components/resume/ResumePreview.vue';
 import type { Resume, TemplateMeta } from '@/types/resume';
 import PhotoSection from '@/components/resume/PhotoSection.vue';
+import { useUnsavedChangesGuard } from '@/composables/useUnsavedChangesGuard';
 
 const props = defineProps<{
     resume: Resume;
@@ -27,25 +30,99 @@ const form = useForm({
     content: props.resume.data,
 });
 
+// Autosave this long after the last change.
+const AUTOSAVE_DELAY = 2000;
+
+const lastSavedAt = ref<Date | null>(null);
+const saveFailed = ref(false);
+
+// A save requested while another is in flight runs once that one finishes.
+let queued = false;
+let afterSave: (() => void) | undefined;
+
 function save(onSaved?: () => void) {
+    if (onSaved) {
+        afterSave = onSaved;
+    }
+
+    if (form.processing) {
+        queued = true;
+
+        return;
+    }
+
+    // What is actually being sent. Typing that happens during the request is
+    // compared against this, so it still counts as unsaved afterwards.
+    const sent = JSON.parse(JSON.stringify(form.data())) as ReturnType<
+        typeof form.data
+    >;
+
     form.transform(({ content, ...rest }) => ({ ...rest, data: content })).put(
         update(props.resume.id).url,
         {
             preserveScroll: true,
+            // Keep this component (and anything typed meanwhile) instead of
+            // re-creating it from the server's props.
+            preserveState: true,
             onSuccess: () => {
-                form.defaults();
-                onSaved?.();
+                form.defaults(sent);
+                lastSavedAt.value = new Date();
+                saveFailed.value = false;
+
+                const callback = afterSave;
+                afterSave = undefined;
+                callback?.();
+            },
+            onError: () => {
+                saveFailed.value = true;
+                afterSave = undefined;
+            },
+            onFinish: () => {
+                if (queued) {
+                    queued = false;
+
+                    if (form.isDirty) {
+                        save();
+                    }
+                }
             },
         },
     );
 }
 
+watchDebounced(
+    () => form.data(),
+    () => {
+        if (form.isDirty) {
+            save();
+        }
+    },
+    { debounce: AUTOSAVE_DELAY, deep: true },
+);
+
+useEventListener(window, 'keydown', (event: KeyboardEvent) => {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        save();
+    }
+});
+
+useUnsavedChangesGuard(() => form.isDirty);
+
+const savedTime = computed(() =>
+    lastSavedAt.value?.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+    }),
+);
+
 function download(kind: 'pdf' | 'docx') {
     const url =
         kind === 'pdf' ? pdf(props.resume.id).url : docx(props.resume.id).url;
 
-    if (!form.isDirty) {
+    if (!form.isDirty && !form.processing) {
         window.location.href = url;
+
         return;
     }
 
@@ -65,17 +142,32 @@ function download(kind: 'pdf' | 'docx') {
             >
                 <Input v-model="form.title" class="font-medium" />
                 <span
-                    v-if="form.recentlySuccessful"
-                    class="text-sm whitespace-nowrap text-green-600"
+                    class="text-sm whitespace-nowrap"
+                    :class="{
+                        'text-muted-foreground': form.processing,
+                        'text-red-600': !form.processing && saveFailed,
+                        'text-amber-600':
+                            !form.processing && !saveFailed && form.isDirty,
+                        'text-green-600':
+                            !form.processing && !saveFailed && !form.isDirty,
+                    }"
+                    aria-live="polite"
                 >
-                    Saved ✓
+                    <template v-if="form.processing">Saving…</template>
+                    <template v-else-if="saveFailed">Not saved</template>
+                    <template v-else-if="form.isDirty">Unsaved</template>
+                    <template v-else-if="savedTime"
+                        >Saved {{ savedTime }} ✓</template
+                    >
+                    <template v-else>All changes saved</template>
                 </span>
-                <span
-                    v-else-if="form.isDirty"
-                    class="text-sm whitespace-nowrap text-amber-600"
+                <Button
+                    type="submit"
+                    :disabled="form.processing || !form.isDirty"
+                    title="Save (Ctrl+S)"
                 >
-                    Unsaved
-                </span>
+                    Save
+                </Button>
                 <Button
                     type="button"
                     variant="outline"
@@ -98,7 +190,9 @@ function download(kind: 'pdf' | 'docx') {
                 v-if="Object.keys(form.errors).length"
                 class="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700"
             >
-                <p class="mb-1 font-medium">Please fix these:</p>
+                <p class="mb-1 font-medium">
+                    Your changes aren't saved yet. Please fix these:
+                </p>
                 <ul class="list-disc pl-5">
                     <li v-for="(message, field) in form.errors" :key="field">
                         {{ message }}
