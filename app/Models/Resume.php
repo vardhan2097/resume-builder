@@ -53,6 +53,7 @@ class Resume extends Model
                 'location' => '',
                 'website' => '',
                 'linkedin' => '',
+                'github' => '',
                 'summary' => '',
             ],
             'experience' => [],

@@ -6,6 +6,7 @@ export type Personal = {
     location: string;
     website: string;
     linkedin: string;
+    github: string;
     summary: string;
 };
 

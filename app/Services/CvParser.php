@@ -166,8 +166,12 @@ class CvParser
             $personal['linkedin'] = $this->normalizeUrl($m[0]);
         }
 
-        $withoutLinkedin = preg_replace('/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/[^\s|,]+/i', '', $headerText);
-        if (preg_match('/(?:https?:\/\/|www\.)[^\s|,]+/i', $withoutLinkedin, $m)) {
+        if (preg_match('/(?:https?:\/\/)?(?:www\.)?github\.com\/[^\s|,]+/i', $fullText, $m)) {
+            $personal['github'] = $this->normalizeUrl($m[0]);
+        }
+
+        $withoutProfiles = preg_replace('/(?:https?:\/\/)?(?:www\.)?(?:linkedin|github)\.com\/[^\s|,]+/i', '', $headerText);
+        if (preg_match('/(?:https?:\/\/|www\.)[^\s|,]+/i', $withoutProfiles, $m)) {
             $personal['website'] = $this->normalizeUrl($m[0]);
         }
 
@@ -211,7 +215,7 @@ class CvParser
         return $part !== ''
             && mb_strlen($part) <= 40
             && preg_match('/\pL/u', $part)
-            && ! preg_match('/@|https?:|www\.|linkedin|\d{5,}/i', $part)
+            && ! preg_match('/@|https?:|www\.|linkedin|github|\d{5,}/i', $part)
             && $part !== $personal['full_name']
             && $part !== $personal['job_title'];
     }

@@ -504,3 +504,48 @@ test('invalid ratings settings are rejected', function (array $settings, string 
     'unknown section' => [['show_levels' => ['hobbies' => true]], 'data.settings.show_levels'],
     'not a boolean' => [['show_levels' => ['skills' => 'maybe']], 'data.settings.show_levels.skills'],
 ]);
+
+test('github link is saved and shown in the preview and docx', function () {
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+    $data = Resume::defaultData();
+    $data['personal']['github'] = 'https://github.com/shrivardhan';
+
+    $this->actingAs($user)
+        ->put(route('resumes.update', $resume), validPayload(['data' => $data]))
+        ->assertSessionHasNoErrors();
+
+    expect($resume->fresh()->data['personal']['github'])->toBe('https://github.com/shrivardhan');
+
+    $this->actingAs($user)
+        ->post(route('resumes.preview', $resume), ['template' => 'classic', 'color' => '#0f766e', 'data' => $data])
+        ->assertSee('https://github.com/shrivardhan');
+
+    $response = $this->actingAs($user)->get(route('resumes.docx', $resume))->assertOk();
+    $zip = new ZipArchive;
+    $zip->open($response->getFile()->getPathname());
+    expect($zip->getFromName('word/document.xml'))->toContain('https://github.com/shrivardhan');
+    $zip->close();
+});
+
+test('github must be a url', function () {
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+    $data = Resume::defaultData();
+    $data['personal']['github'] = 'not a link';
+
+    $this->actingAs($user)
+        ->put(route('resumes.update', $resume), validPayload(['data' => $data]))
+        ->assertSessionHasErrors('data.personal.github');
+});
+
+test('resumes saved before github existed get an empty github field', function () {
+    $user = User::factory()->create();
+    $data = Resume::defaultData();
+    unset($data['personal']['github']);
+    $resume = $user->resumes()->create(['data' => $data]);
+
+    $this->actingAs($user)
+        ->get(route('resumes.edit', $resume))
+        ->assertInertia(fn ($page) => $page->where('resume.data.personal.github', ''));
+});

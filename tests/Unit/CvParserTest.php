@@ -85,3 +85,13 @@ test('it splits skills and language levels', function () {
         ->and(array_column($data['languages'], 'name'))->toBe(['English', 'Hindi', 'Konkani'])
         ->and(array_column($data['languages'], 'level'))->toBe([5, 3, 5]);
 });
+
+test('it reads a github link without mistaking it for the website', function () {
+    $text = "Asha Naik\nLaravel Developer\nasha@example.com | linkedin.com/in/ashanaik | github.com/ashanaik | https://asha.dev\n\nSkills\nPHP";
+
+    $personal = (new CvParser)->parseText($text)['personal'];
+
+    expect($personal['github'])->toBe('https://github.com/ashanaik')
+        ->and($personal['linkedin'])->toBe('https://linkedin.com/in/ashanaik')
+        ->and($personal['website'])->toBe('https://asha.dev');
+});

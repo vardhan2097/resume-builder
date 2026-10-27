@@ -77,7 +77,7 @@ class ResumeDocxBuilder
             );
         }
 
-        $contacts = F::strings([$p['phone'], $p['email'], $p['location'], $p['website'], $p['linkedin']]);
+        $contacts = F::strings([$p['phone'], $p['email'], $p['location'], $p['website'], $p['linkedin'], $p['github']]);
 
         if ($contacts) {
             $section->addText(implode('  |  ', $contacts), ['size' => 9, 'color' => '4B5563']);

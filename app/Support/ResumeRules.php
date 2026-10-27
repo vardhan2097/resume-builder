@@ -21,7 +21,7 @@ class ResumeRules
 
             'data' => ['required', 'array:personal,experience,education,skills,tools,projects,languages,certifications,hobbies,references,settings'],
 
-            'data.personal' => ['required', 'array:full_name,job_title,email,phone,location,website,linkedin,summary'],
+            'data.personal' => ['required', 'array:full_name,job_title,email,phone,location,website,linkedin,github,summary'],
             'data.personal.full_name' => ['nullable', 'string', 'max:100'],
             'data.personal.job_title' => ['nullable', 'string', 'max:100'],
             'data.personal.email' => ['nullable', 'email', 'max:150'],
@@ -29,6 +29,7 @@ class ResumeRules
             'data.personal.location' => ['nullable', 'string', 'max:150'],
             'data.personal.website' => ['nullable', 'url', 'max:200'],
             'data.personal.linkedin' => ['nullable', 'url', 'max:200'],
+            'data.personal.github' => ['nullable', 'url', 'max:200'],
             'data.personal.summary' => ['nullable', 'string', 'max:2000'],
 
             'data.experience' => ['present', 'array', 'max:20'],
