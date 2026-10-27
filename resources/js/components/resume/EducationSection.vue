@@ -24,7 +24,10 @@ const blank = () => ({
             <div class="grid gap-4 sm:grid-cols-2">
                 <div class="grid gap-2">
                     <Label>Degree / Course</Label>
-                    <Input v-model="item.degree" placeholder="e.g. B.Sc. Computer Science" />
+                    <Input
+                        v-model="item.degree"
+                        placeholder="e.g. B.Sc. Computer Science"
+                    />
                 </div>
                 <div class="grid gap-2">
                     <Label>Institution</Label>
@@ -36,7 +39,10 @@ const blank = () => ({
                 </div>
                 <div class="grid gap-2">
                     <Label>Score</Label>
-                    <Input v-model="item.score" placeholder="e.g. CGPA 8.2 / 75%" />
+                    <Input
+                        v-model="item.score"
+                        placeholder="e.g. CGPA 8.2 / 75%"
+                    />
                 </div>
                 <div class="grid gap-2">
                     <Label>Start</Label>

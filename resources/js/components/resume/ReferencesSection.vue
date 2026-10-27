@@ -6,7 +6,13 @@ import type { ReferenceItem } from '@/types/resume';
 
 const items = defineModel<ReferenceItem[]>({ required: true });
 
-const blank = () => ({ name: '', position: '', company: '', phone: '', email: '' });
+const blank = () => ({
+    name: '',
+    position: '',
+    company: '',
+    phone: '',
+    email: '',
+});
 </script>
 
 <template>

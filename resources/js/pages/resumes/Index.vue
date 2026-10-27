@@ -72,24 +72,24 @@ function importResume(event: Event) {
     <Head title="My Resumes" />
 
     <div class="flex flex-wrap items-center justify-between gap-3">
-    <h1 class="text-2xl font-semibold">My Resumes</h1>
-    <div class="flex gap-2">
-        <Button
-            variant="outline"
-            :disabled="importForm.processing"
-            @click="chooseCv"
-        >
-            {{ importForm.processing ? 'Reading your CV…' : 'Import CV' }}
-        </Button>
-        <Button @click="createResume">+ New Resume</Button>
-    </div>
-    <input
-        ref="cvInput"
-        type="file"
-        accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        class="hidden"
-        @change="importResume"
-    />
+        <h1 class="text-2xl font-semibold">My Resumes</h1>
+        <div class="flex gap-2">
+            <Button
+                variant="outline"
+                :disabled="importForm.processing"
+                @click="chooseCv"
+            >
+                {{ importForm.processing ? 'Reading your CV…' : 'Import CV' }}
+            </Button>
+            <Button @click="createResume">+ New Resume</Button>
+        </div>
+        <input
+            ref="cvInput"
+            type="file"
+            accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            class="hidden"
+            @change="importResume"
+        />
     </div>
 
     <p

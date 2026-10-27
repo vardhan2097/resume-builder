@@ -1,13 +1,12 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ResumeController;
 use App\Http\Controllers\ResumeImportController;
+use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'Welcome')->name('home');
 
-Route::middleware(['auth', 'verified'])->group(function ()
-{
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', fn () => redirect()->route('resumes.index'))->name('dashboard');
 
     Route::resource('resumes', ResumeController::class)

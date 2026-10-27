@@ -45,8 +45,7 @@ class Resume extends Model
     public static function defaultData(): array
     {
         return [
-            'personal' =>
-            [
+            'personal' => [
                 'full_name' => '',
                 'job_title' => '',
                 'email' => '',

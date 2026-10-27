@@ -32,10 +32,18 @@ const natural = reactive({ width: 0, height: 0 });
 const offset = reactive({ x: 0, y: 0 });
 const zoom = ref(1);
 
-let drag: { pointerId: number; startX: number; startY: number; originX: number; originY: number } | null = null;
+let drag: {
+    pointerId: number;
+    startX: number;
+    startY: number;
+    originX: number;
+    originY: number;
+} | null = null;
 
 const baseScale = computed(() =>
-    natural.width && natural.height ? FRAME / Math.min(natural.width, natural.height) : 1,
+    natural.width && natural.height
+        ? FRAME / Math.min(natural.width, natural.height)
+        : 1,
 );
 const scale = computed(() => baseScale.value * zoom.value);
 
@@ -63,7 +71,10 @@ function onLoad(event: Event) {
 
     // Centre horizontally; for portraits start near the top so faces aren't cut off.
     offset.x = (FRAME - natural.width * scale.value) / 2;
-    offset.y = natural.height > natural.width ? (FRAME - natural.height * scale.value) * 0.2 : (FRAME - natural.height * scale.value) / 2;
+    offset.y =
+        natural.height > natural.width
+            ? (FRAME - natural.height * scale.value) * 0.2
+            : (FRAME - natural.height * scale.value) / 2;
     clampOffset();
 }
 
@@ -80,7 +91,13 @@ function setZoom(next: number) {
 
 function onPointerDown(event: PointerEvent) {
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-    drag = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, originX: offset.x, originY: offset.y };
+    drag = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        originX: offset.x,
+        originY: offset.y,
+    };
 }
 
 function onPointerMove(event: PointerEvent) {
@@ -137,7 +154,10 @@ watch(
         <DialogContent class="sm:max-w-md">
             <DialogHeader>
                 <DialogTitle>Frame your photo</DialogTitle>
-                <DialogDescription>Drag to reposition, use the slider or scroll to zoom.</DialogDescription>
+                <DialogDescription
+                    >Drag to reposition, use the slider or scroll to
+                    zoom.</DialogDescription
+                >
             </DialogHeader>
 
             <div class="flex flex-col items-center gap-4">
@@ -159,7 +179,9 @@ watch(
                         :style="imageStyle"
                         @load="onLoad"
                     />
-                    <div class="pointer-events-none absolute inset-0 rounded-full shadow-[0_0_0_9999px_rgba(0,0,0,0.45)] ring-2 ring-white/80" />
+                    <div
+                        class="pointer-events-none absolute inset-0 rounded-full shadow-[0_0_0_9999px_rgba(0,0,0,0.45)] ring-2 ring-white/80"
+                    />
                 </div>
 
                 <label class="flex w-full items-center gap-3 text-sm">
@@ -171,14 +193,29 @@ watch(
                         :max="MAX_ZOOM"
                         step="0.01"
                         :value="zoom"
-                        @input="setZoom(Number(($event.target as HTMLInputElement).value))"
+                        @input="
+                            setZoom(
+                                Number(
+                                    ($event.target as HTMLInputElement).value,
+                                ),
+                            )
+                        "
                     />
                 </label>
             </div>
 
             <DialogFooter>
-                <Button type="button" variant="outline" @click="onOpenChange(false)">Cancel</Button>
-                <Button type="button" :disabled="processing || !natural.width" @click="confirm">
+                <Button
+                    type="button"
+                    variant="outline"
+                    @click="onOpenChange(false)"
+                    >Cancel</Button
+                >
+                <Button
+                    type="button"
+                    :disabled="processing || !natural.width"
+                    @click="confirm"
+                >
                     {{ processing ? 'Saving…' : 'Save photo' }}
                 </Button>
             </DialogFooter>

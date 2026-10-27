@@ -2,19 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\UpdateResumeRequest;
 use App\Models\Resume;
+use App\Services\ResumeDocxBuilder;
+use App\Services\ResumeRenderer;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
-use App\Http\Requests\UpdateResumeRequest;
-use App\Services\ResumeRenderer;
-use Illuminate\Http\Response as HttpResponse;
-use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Str;
-use App\Services\ResumeDocxBuilder;
-use Illuminate\Support\Facades\Storage;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
 
@@ -95,7 +95,7 @@ class ResumeController extends Controller
     {
         Gate::authorize('update', $resume);
 
-        $html = $renderer->render($resume->template, $resume->color, $resume->data, pdf: true, photoPath: $resume->photo_path,);
+        $html = $renderer->render($resume->template, $resume->color, $resume->data, pdf: true, photoPath: $resume->photo_path);
 
         $name = $resume->data['personal']['full_name'] ?? '' ?: $resume->title;
         $filename = Str::slug($name).'-resume.pdf';
@@ -105,7 +105,6 @@ class ResumeController extends Controller
             ->setOption('isRemoteEnabled', false)
             ->download($filename);
     }
-
 
     public function docx(Resume $resume, ResumeDocxBuilder $builder)
     {
@@ -236,6 +235,6 @@ class ResumeController extends Controller
 
     private function images(): ImageManager
     {
-        return new ImageManager(new Driver());
+        return new ImageManager(new Driver);
     }
 }

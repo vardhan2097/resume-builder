@@ -71,12 +71,12 @@ class CvParser
 
     private function pdfText(string $path): string
     {
-        return (new PdfParser())->parseFile($path)->getText();
+        return (new PdfParser)->parseFile($path)->getText();
     }
 
     private function docxText(string $path): string
     {
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
 
         if ($zip->open($path) !== true) {
             throw new InvalidArgumentException('Could not open the DOCX file.');
@@ -116,6 +116,7 @@ class CvParser
             if ($key !== null) {
                 $current = $key;
                 $sections[$current] ??= [];
+
                 continue;
             }
 
@@ -303,11 +304,13 @@ class CvParser
                     $entries[] = $current;
                 }
                 $current = ['heading' => [$text], 'range' => null, 'bullets' => []];
+
                 continue;
             }
 
             if (! $isBullet && count($current['heading']) < 3) {
                 $current['heading'][] = $text;
+
                 continue;
             }
 

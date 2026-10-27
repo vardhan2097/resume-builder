@@ -21,11 +21,18 @@ const linkPlaceholder = 'https://';
                 </div>
                 <div class="grid gap-2">
                     <Label>Duration</Label>
-                    <Input v-model="item.duration" placeholder="e.g. 3 months" />
+                    <Input
+                        v-model="item.duration"
+                        placeholder="e.g. 3 months"
+                    />
                 </div>
                 <div class="grid gap-2 sm:col-span-2">
                     <Label>Link</Label>
-                    <Input type="url" v-model="item.link" :placeholder="linkPlaceholder" />
+                    <Input
+                        type="url"
+                        v-model="item.link"
+                        :placeholder="linkPlaceholder"
+                    />
                 </div>
             </div>
             <div class="grid gap-2">

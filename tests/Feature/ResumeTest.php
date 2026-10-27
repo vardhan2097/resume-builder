@@ -4,6 +4,8 @@ use App\Models\Resume;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpWord\IOFactory;
+use PhpOffice\PhpWord\PhpWord;
 
 test('guests are redirected to login', function () {
     $this->get(route('resumes.index'))->assertRedirect(route('login'));
@@ -239,13 +241,13 @@ test('user cannot see another users photo', function () {
 });
 
 test('user can import a docx cv', function () {
-    $word = new \PhpOffice\PhpWord\PhpWord();
+    $word = new PhpWord;
     $section = $word->addSection();
     foreach (['Asha Naik', 'Laravel Developer', 'asha@example.com | +91 98765 43210', 'Skills', 'PHP, Laravel, MySQL'] as $line) {
         $section->addText($line);
     }
     $path = sys_get_temp_dir().'/cv-test-'.uniqid().'.docx';
-    \PhpOffice\PhpWord\IOFactory::createWriter($word, 'Word2007')->save($path);
+    IOFactory::createWriter($word, 'Word2007')->save($path);
 
     $user = User::factory()->create();
 

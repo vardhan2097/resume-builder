@@ -84,10 +84,14 @@ function save(crop: PhotoCrop) {
     }
 
     framing.value = true;
-    router.put(photo.frame(props.resumeId).url, { crop }, {
-        ...options,
-        onFinish: () => (framing.value = false),
-    });
+    router.put(
+        photo.frame(props.resumeId).url,
+        { crop },
+        {
+            ...options,
+            onFinish: () => (framing.value = false),
+        },
+    );
 }
 
 function remove() {
@@ -131,7 +135,13 @@ onBeforeUnmount(releaseObjectUrl);
                         :disabled="form.processing"
                         @click="choose"
                     >
-                        {{ form.processing ? 'Uploading…' : photoUrl ? 'Change' : 'Upload' }}
+                        {{
+                            form.processing
+                                ? 'Uploading…'
+                                : photoUrl
+                                  ? 'Change'
+                                  : 'Upload'
+                        }}
                     </Button>
                     <Button
                         v-if="photoUrl && photoOriginalUrl"
@@ -152,7 +162,9 @@ onBeforeUnmount(releaseObjectUrl);
                         Remove
                     </Button>
                 </div>
-                <p class="text-xs text-muted-foreground">JPG, PNG or WebP, up to 5MB.</p>
+                <p class="text-xs text-muted-foreground">
+                    JPG, PNG or WebP, up to 5MB.
+                </p>
                 <p v-if="form.errors.photo" class="text-xs text-red-600">
                     {{ form.errors.photo }}
                 </p>

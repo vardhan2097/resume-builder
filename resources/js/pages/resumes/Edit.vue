@@ -34,19 +34,21 @@ const form = useForm({
 });
 
 function save(onSaved?: () => void) {
-    form
-        .transform(({ content, ...rest }) => ({ ...rest, data: content }))
-        .put(update(props.resume.id).url, {
+    form.transform(({ content, ...rest }) => ({ ...rest, data: content })).put(
+        update(props.resume.id).url,
+        {
             preserveScroll: true,
             onSuccess: () => {
                 form.defaults();
                 onSaved?.();
             },
-        });
+        },
+    );
 }
 
 function download(kind: 'pdf' | 'docx') {
-    const url = kind === 'pdf' ? pdf(props.resume.id).url : docx(props.resume.id).url;
+    const url =
+        kind === 'pdf' ? pdf(props.resume.id).url : docx(props.resume.id).url;
 
     if (!form.isDirty) {
         window.location.href = url;
@@ -64,12 +66,20 @@ function download(kind: 'pdf' | 'docx') {
 
     <div class="grid gap-6 p-4 lg:grid-cols-2">
         <form class="flex flex-col gap-6" @submit.prevent="save()">
-            <div class="sticky top-0 z-10 flex items-center gap-3 rounded-xl border bg-background p-3">
+            <div
+                class="sticky top-0 z-10 flex items-center gap-3 rounded-xl border bg-background p-3"
+            >
                 <Input v-model="form.title" class="font-medium" />
-                <span v-if="form.recentlySuccessful" class="text-sm whitespace-nowrap text-green-600">
+                <span
+                    v-if="form.recentlySuccessful"
+                    class="text-sm whitespace-nowrap text-green-600"
+                >
                     Saved ✓
                 </span>
-                <span v-else-if="form.isDirty" class="text-sm whitespace-nowrap text-amber-600">
+                <span
+                    v-else-if="form.isDirty"
+                    class="text-sm whitespace-nowrap text-amber-600"
+                >
                     Unsaved
                 </span>
                 <Button
@@ -112,7 +122,11 @@ function download(kind: 'pdf' | 'docx') {
                             v-model="form.template"
                             class="h-9 rounded-md border border-input bg-transparent px-2 text-sm"
                         >
-                            <option v-for="(meta, key) in templates" :key="key" :value="key">
+                            <option
+                                v-for="(meta, key) in templates"
+                                :key="key"
+                                :value="key"
+                            >
                                 {{ meta.name }}
                             </option>
                         </select>
@@ -122,11 +136,16 @@ function download(kind: 'pdf' | 'docx') {
                         <label class="text-sm font-medium">Colour</label>
                         <div class="flex flex-wrap items-center gap-2">
                             <button
-                                v-for="swatch in templates[form.template]?.palettes ?? []"
+                                v-for="swatch in templates[form.template]
+                                    ?.palettes ?? []"
                                 :key="swatch"
                                 type="button"
                                 class="h-8 w-8 rounded-full border-2"
-                                :class="form.color === swatch ? 'border-foreground' : 'border-transparent'"
+                                :class="
+                                    form.color === swatch
+                                        ? 'border-foreground'
+                                        : 'border-transparent'
+                                "
                                 :style="{ backgroundColor: swatch }"
                                 :aria-label="`Use colour ${swatch}`"
                                 @click="form.color = swatch"
@@ -147,7 +166,14 @@ function download(kind: 'pdf' | 'docx') {
                 :resume-id="resume.id"
                 :photo-url="resume.photo_url"
                 :photo-original-url="resume.photo_original_url"
-                :initials="(form.content.personal.full_name || 'CV').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()"
+                :initials="
+                    (form.content.personal.full_name || 'CV')
+                        .split(' ')
+                        .map((w) => w[0])
+                        .slice(0, 2)
+                        .join('')
+                        .toUpperCase()
+                "
             />
 
             <PersonalSection v-model="form.content.personal" />

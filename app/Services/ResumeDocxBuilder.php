@@ -26,7 +26,7 @@ class ResumeDocxBuilder
             ? ltrim($resume->color, '#')
             : '0F766E';
 
-        $word = new PhpWord();
+        $word = new PhpWord;
         $word->setDefaultFontName('Calibri');
         $word->setDefaultFontSize(10);
 

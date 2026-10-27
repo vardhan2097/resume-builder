@@ -68,7 +68,8 @@ async function load() {
 
 function onFrameLoad(event: Event) {
     const frame = event.target as HTMLIFrameElement;
-    const contentHeight = frame.contentDocument?.body.scrollHeight ?? PAGE_HEIGHT;
+    const contentHeight =
+        frame.contentDocument?.body.scrollHeight ?? PAGE_HEIGHT;
     frameHeight.value = Math.max(PAGE_HEIGHT, contentHeight);
 }
 
@@ -101,7 +102,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div ref="wrapper" class="relative w-full overflow-hidden rounded-xl border bg-white">
+    <div
+        ref="wrapper"
+        class="relative w-full overflow-hidden rounded-xl border bg-white"
+    >
         <div
             v-if="loading"
             class="absolute top-2 right-2 z-10 rounded bg-black/60 px-2 py-1 text-xs text-white"

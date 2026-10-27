@@ -38,7 +38,7 @@ TXT;
 }
 
 test('it reads contact details', function () {
-    $personal = (new CvParser())->parseText(sampleCv())['personal'];
+    $personal = (new CvParser)->parseText(sampleCv())['personal'];
 
     expect($personal['full_name'])->toBe('Asha Naik')
         ->and($personal['job_title'])->toBe('Laravel Developer')
@@ -49,13 +49,13 @@ test('it reads contact details', function () {
 });
 
 test('it reads the summary', function () {
-    $data = (new CvParser())->parseText(sampleCv());
+    $data = (new CvParser)->parseText(sampleCv());
 
     expect($data['personal']['summary'])->toContain('6 years of experience');
 });
 
 test('it splits experience into entries with dates', function () {
-    $experience = (new CvParser())->parseText(sampleCv())['experience'];
+    $experience = (new CvParser)->parseText(sampleCv())['experience'];
 
     expect($experience)->toHaveCount(2)
         ->and($experience[0]['job_title'])->toBe('Backend Developer')
@@ -68,7 +68,7 @@ test('it splits experience into entries with dates', function () {
 });
 
 test('it reads education with score', function () {
-    $education = (new CvParser())->parseText(sampleCv())['education'];
+    $education = (new CvParser)->parseText(sampleCv())['education'];
 
     expect($education)->toHaveCount(1)
         ->and($education[0]['degree'])->toBe('Bachelor of Computer Science')
@@ -79,7 +79,7 @@ test('it reads education with score', function () {
 });
 
 test('it splits skills and language levels', function () {
-    $data = (new CvParser())->parseText(sampleCv());
+    $data = (new CvParser)->parseText(sampleCv());
 
     expect(array_column($data['skills'], 'name'))->toBe(['PHP', 'Laravel', 'MySQL', 'Vue.js'])
         ->and(array_column($data['languages'], 'name'))->toBe(['English', 'Hindi', 'Konkani'])
