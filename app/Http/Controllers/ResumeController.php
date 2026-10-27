@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateResumeRequest;
 use App\Models\Resume;
-use App\Services\ResumeDocxBuilder;
+use App\Services\ResumeDownloads;
 use App\Services\ResumeRenderer;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Support\ResumeRules;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -37,6 +37,18 @@ class ResumeController extends Controller
         $resume = $request->user()->resumes()->create([
             'title' => 'Untitled Resume',
         ]);
+
+        return redirect()->route('resumes.edit', $resume);
+    }
+
+    /**
+     * Save a resume built in guest mode (sent from the browser's localStorage) to the account.
+     */
+    public function claim(Request $request): RedirectResponse
+    {
+        $resume = $request->user()->resumes()->create(
+            $request->validate(ResumeRules::withTitle())
+        );
 
         return redirect()->route('resumes.edit', $resume);
     }
@@ -91,32 +103,18 @@ class ResumeController extends Controller
         ));
     }
 
-    public function pdf(Resume $resume, ResumeRenderer $renderer)
+    public function pdf(Resume $resume, ResumeDownloads $downloads)
     {
         Gate::authorize('update', $resume);
 
-        $html = $renderer->render($resume->template, $resume->color, $resume->data, pdf: true, photoPath: $resume->photo_path);
-
-        $name = $resume->data['personal']['full_name'] ?? '' ?: $resume->title;
-        $filename = Str::slug($name).'-resume.pdf';
-
-        return Pdf::loadHTML($html)
-            ->setPaper('a4')
-            ->setOption('isRemoteEnabled', false)
-            ->download($filename);
+        return $downloads->pdf($resume);
     }
 
-    public function docx(Resume $resume, ResumeDocxBuilder $builder)
+    public function docx(Resume $resume, ResumeDownloads $downloads)
     {
         Gate::authorize('update', $resume);
 
-        $path = $builder->build($resume);
-
-        $name = $resume->data['personal']['full_name'] ?? '' ?: $resume->title;
-
-        return response()
-            ->download($path, Str::slug($name).'-resume.docx')
-            ->deleteFileAfterSend(true);
+        return $downloads->docx($resume);
     }
 
     public function uploadPhoto(Request $request, Resume $resume): RedirectResponse

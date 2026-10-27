@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { preview } from '@/routes/resumes';
+import { HttpError, post } from '@/lib/http';
 import type { ResumeData } from '@/types/resume';
 
 const props = defineProps<{
-    resumeId: number;
+    /** Preview endpoint: the resume's own route, or the guest one. */
+    url: string;
     template: string;
     color: string;
     photoKey?: string | null;
@@ -16,6 +17,7 @@ const PAGE_HEIGHT = 1123;
 
 const html = ref('');
 const loading = ref(false);
+const notice = ref('');
 const scale = ref(1);
 const frameHeight = ref(PAGE_HEIGHT);
 const wrapper = ref<HTMLElement | null>(null);
@@ -24,41 +26,32 @@ let timer: ReturnType<typeof setTimeout> | undefined;
 let controller: AbortController | null = null;
 let observer: ResizeObserver | null = null;
 
-function xsrfToken(): string {
-    const cookie = document.cookie
-        .split('; ')
-        .find((row) => row.startsWith('XSRF-TOKEN='));
-
-    return cookie ? decodeURIComponent(cookie.split('=')[1]) : '';
-}
-
 async function load() {
     controller?.abort();
     controller = new AbortController();
     loading.value = true;
 
     try {
-        const response = await fetch(preview(props.resumeId).url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Accept: 'text/html',
-                'X-XSRF-TOKEN': xsrfToken(),
-            },
-            credentials: 'same-origin',
-            body: JSON.stringify({
+        const response = await post(
+            props.url,
+            {
                 template: props.template,
                 color: props.color,
                 data: props.content,
-            }),
-            signal: controller.signal,
-        });
+            },
+            { signal: controller.signal },
+        );
 
-        if (response.ok) {
-            html.value = await response.text();
-        }
+        html.value = await response.text();
+        notice.value = '';
     } catch (error) {
-        if ((error as Error).name !== 'AbortError') {
+        if (error instanceof HttpError) {
+            // Keep showing the last good preview.
+            notice.value =
+                error.status === 422
+                    ? 'Preview paused: ' + error.message
+                    : error.message;
+        } else if ((error as Error).name !== 'AbortError') {
             console.error(error);
         }
     } finally {
@@ -111,6 +104,13 @@ onBeforeUnmount(() => {
             class="absolute top-2 right-2 z-10 rounded bg-black/60 px-2 py-1 text-xs text-white"
         >
             Updating…
+        </div>
+
+        <div
+            v-if="notice"
+            class="absolute inset-x-2 top-2 z-10 rounded bg-amber-100 px-3 py-2 text-xs text-amber-900"
+        >
+            {{ notice }}
         </div>
 
         <div :style="{ height: `${frameHeight * scale}px` }">

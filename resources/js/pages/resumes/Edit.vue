@@ -1,19 +1,13 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import ExperienceSection from '@/components/resume/ExperienceSection.vue';
-import LevelSection from '@/components/resume/LevelSection.vue';
-import PersonalSection from '@/components/resume/PersonalSection.vue';
+import ContentSections from '@/components/resume/ContentSections.vue';
+import DesignSection from '@/components/resume/DesignSection.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { docx, index, pdf, update } from '@/routes/resumes';
+import { docx, index, pdf, preview, update } from '@/routes/resumes';
 import ResumePreview from '@/components/resume/ResumePreview.vue';
 import type { Resume, TemplateMeta } from '@/types/resume';
 import PhotoSection from '@/components/resume/PhotoSection.vue';
-import CertificationsSection from '@/components/resume/CertificationsSection.vue';
-import EducationSection from '@/components/resume/EducationSection.vue';
-import HobbiesSection from '@/components/resume/HobbiesSection.vue';
-import ProjectsSection from '@/components/resume/ProjectsSection.vue';
-import ReferencesSection from '@/components/resume/ReferencesSection.vue';
 
 const props = defineProps<{
     resume: Resume;
@@ -112,54 +106,11 @@ function download(kind: 'pdf' | 'docx') {
                 </ul>
             </div>
 
-            <section class="rounded-xl border p-5">
-                <h2 class="mb-4 text-lg font-semibold">Design</h2>
-
-                <div class="grid gap-4 sm:grid-cols-2">
-                    <div class="grid gap-2">
-                        <label class="text-sm font-medium">Template</label>
-                        <select
-                            v-model="form.template"
-                            class="h-9 rounded-md border border-input bg-transparent px-2 text-sm"
-                        >
-                            <option
-                                v-for="(meta, key) in templates"
-                                :key="key"
-                                :value="key"
-                            >
-                                {{ meta.name }}
-                            </option>
-                        </select>
-                    </div>
-
-                    <div class="grid gap-2">
-                        <label class="text-sm font-medium">Colour</label>
-                        <div class="flex flex-wrap items-center gap-2">
-                            <button
-                                v-for="swatch in templates[form.template]
-                                    ?.palettes ?? []"
-                                :key="swatch"
-                                type="button"
-                                class="h-8 w-8 rounded-full border-2"
-                                :class="
-                                    form.color === swatch
-                                        ? 'border-foreground'
-                                        : 'border-transparent'
-                                "
-                                :style="{ backgroundColor: swatch }"
-                                :aria-label="`Use colour ${swatch}`"
-                                @click="form.color = swatch"
-                            />
-                            <input
-                                v-model="form.color"
-                                type="color"
-                                class="h-8 w-10 cursor-pointer rounded border"
-                                aria-label="Custom colour"
-                            />
-                        </div>
-                    </div>
-                </div>
-            </section>
+            <DesignSection
+                v-model:template="form.template"
+                v-model:color="form.color"
+                :templates="templates"
+            />
 
             <PhotoSection
                 v-if="templates[form.template]?.photo"
@@ -176,34 +127,13 @@ function download(kind: 'pdf' | 'docx') {
                 "
             />
 
-            <PersonalSection v-model="form.content.personal" />
-            <ExperienceSection v-model="form.content.experience" />
-            <EducationSection v-model="form.content.education" />
-            <LevelSection
-                v-model="form.content.skills"
-                title="Skills"
-                placeholder="e.g. Laravel"
-            />
-            <LevelSection
-                v-model="form.content.tools"
-                title="Software / Tools"
-                placeholder="e.g. VS Code"
-            />
-            <ProjectsSection v-model="form.content.projects" />
-            <CertificationsSection v-model="form.content.certifications" />
-            <LevelSection
-                v-model="form.content.languages"
-                title="Languages"
-                placeholder="e.g. English"
-            />
-            <HobbiesSection v-model="form.content.hobbies" />
-            <ReferencesSection v-model="form.content.references" />
+            <ContentSections v-model="form.content" />
         </form>
 
         <div class="hidden lg:block">
             <div class="sticky top-4">
                 <ResumePreview
-                    :resume-id="resume.id"
+                    :url="preview(resume.id).url"
                     :template="form.template"
                     :color="form.color"
                     :content="form.content"

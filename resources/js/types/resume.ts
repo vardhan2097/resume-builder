@@ -89,3 +89,11 @@ export type TemplateMeta = {
     photo: boolean;
     palettes: string[];
 };
+
+/** A resume built in guest mode; lives only in the browser until claimed. */
+export type GuestResume = {
+    title: string;
+    template: string;
+    color: string;
+    data: ResumeData;
+};
