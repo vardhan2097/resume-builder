@@ -41,7 +41,7 @@ class ResumeDocxBuilder
 
         if (trim((string) $p['summary']) !== '') {
             $this->heading($section, 'Summary');
-            $section->addText((string) $p['summary']);
+            $this->paragraphs($section, $p['summary']);
         }
 
         $this->experience($section, F::filled($data['experience'], 'job_title', 'company'));
@@ -108,6 +108,21 @@ class ResumeDocxBuilder
     {
         if (trim($text) !== '') {
             $section->addText($text, ['size' => 9, 'color' => '6B7280'], ['spaceAfter' => 40]);
+        }
+    }
+
+    /**
+     * Free text with the user's line breaks kept. Word ignores raw newlines in addText(),
+     * so each line is its own paragraph, tight within a block and spaced between blocks.
+     */
+    private function paragraphs(Section $section, ?string $text): void
+    {
+        foreach (F::paragraphs($text) as $paragraph) {
+            foreach ($paragraph as $i => $line) {
+                $last = $i === count($paragraph) - 1;
+
+                $section->addText($line, null, ['spaceAfter' => $last ? Converter::pointToTwip(6) : 0]);
+            }
         }
     }
 

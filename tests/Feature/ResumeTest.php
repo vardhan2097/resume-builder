@@ -371,3 +371,47 @@ test('removing a photo deletes the original too', function () {
     Storage::disk('local')->assertMissing($paths[1]);
     expect($resume->refresh()->photo_original_path)->toBeNull();
 });
+
+function resumeWithMultilineSummary(User $user): Resume
+{
+    $data = Resume::defaultData();
+    $data['personal']['summary'] = "Builds Laravel apps.\n\nNow looking for a PHP role.\nImmediate joiner & <ready>.";
+
+    return $user->resumes()->create(['data' => $data]);
+}
+
+test('summary line breaks are kept in the preview and pdf html', function () {
+    $user = User::factory()->create();
+    $resume = resumeWithMultilineSummary($user);
+
+    $this->actingAs($user)
+        ->postJson(route('resumes.preview', $resume), [
+            'template' => 'classic',
+            'color' => '#0f766e',
+            'data' => $resume->data,
+        ])
+        ->assertOk()
+        ->assertSee('<p class="">Builds Laravel apps.</p>', false)
+        ->assertSee('<p class="">Now looking for a PHP role.<br>Immediate joiner', false)
+        ->assertSee('Immediate joiner &amp; &lt;ready&gt;.', false);
+});
+
+test('summary line breaks are kept in the docx', function () {
+    $user = User::factory()->create();
+    $resume = resumeWithMultilineSummary($user);
+
+    $response = $this->actingAs($user)->get(route('resumes.docx', $resume))->assertOk();
+
+    $zip = new ZipArchive;
+    $zip->open($response->getFile()->getPathname());
+    $xml = $zip->getFromName('word/document.xml');
+    $zip->close();
+
+    // Each typed line is its own Word paragraph, in order.
+    preg_match_all('/<w:p>.*?<\/w:p>/s', $xml, $paragraphs);
+    $texts = array_map(fn ($p) => trim(html_entity_decode(strip_tags($p))), $paragraphs[0]);
+
+    expect($texts)->toContain('Builds Laravel apps.', 'Now looking for a PHP role.', 'Immediate joiner & <ready>.')
+        ->and(array_search('Immediate joiner & <ready>.', $texts))->toBe(array_search('Now looking for a PHP role.', $texts) + 1)
+        ->and($xml)->not->toContain('<w:br/>');
+});

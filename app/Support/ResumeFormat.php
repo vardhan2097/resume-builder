@@ -38,6 +38,19 @@ class ResumeFormat
         return array_values(array_filter(array_map('trim', $lines)));
     }
 
+    /**
+     * Free text split the way the user typed it: blank lines separate paragraphs,
+     * single newlines become line breaks within a paragraph.
+     *
+     * @return list<list<string>>
+     */
+    public static function paragraphs(?string $text): array
+    {
+        $blocks = preg_split('/\R\s*\R/', trim((string) $text));
+
+        return array_values(array_filter(array_map(self::lines(...), $blocks)));
+    }
+
     public static function filled(mixed $items, string ...$keys): array
     {
         return array_values(array_filter((array) $items, function ($item) use ($keys) {

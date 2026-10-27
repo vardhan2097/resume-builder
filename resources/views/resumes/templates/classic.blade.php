@@ -106,7 +106,7 @@
             @if ($p['summary'])
                 <div class="heading">Summary</div>
                 <div class="rule"></div>
-                <p>{{ $p['summary'] }}</p>
+                @include('resumes.partials.text', ['text' => $p['summary']])
             @endif
 
             @if (count($experience))
