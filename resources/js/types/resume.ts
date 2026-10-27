@@ -72,6 +72,15 @@ export type ResumeData = {
     certifications: CertificationItem[];
     hobbies: string[];
     references: ReferenceItem[];
+    settings: ResumeSettings;
+};
+
+/** Sections whose items carry a 1–5 level. */
+export type LevelSectionKey = 'skills' | 'tools' | 'languages';
+
+export type ResumeSettings = {
+    /** Show the rating next to each item, per section. */
+    show_levels: Record<LevelSectionKey, boolean>;
 };
 
 export type Resume = {

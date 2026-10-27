@@ -19,11 +19,13 @@ const content = defineModel<ResumeData>({ required: true });
     <EducationSection v-model="content.education" />
     <LevelSection
         v-model="content.skills"
+        v-model:show-levels="content.settings.show_levels.skills"
         title="Skills"
         placeholder="e.g. Laravel"
     />
     <LevelSection
         v-model="content.tools"
+        v-model:show-levels="content.settings.show_levels.tools"
         title="Software / Tools"
         placeholder="e.g. VS Code"
     />
@@ -31,6 +33,7 @@ const content = defineModel<ResumeData>({ required: true });
     <CertificationsSection v-model="content.certifications" />
     <LevelSection
         v-model="content.languages"
+        v-model:show-levels="content.settings.show_levels.languages"
         title="Languages"
         placeholder="e.g. English"
     />

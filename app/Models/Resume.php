@@ -64,6 +64,29 @@ class Resume extends Model
             'certifications' => [],
             'hobbies' => [],
             'references' => [],
+            'settings' => [
+                // Show the 1–5 rating next to each item, per rated section.
+                'show_levels' => [
+                    'skills' => true,
+                    'tools' => true,
+                    'languages' => true,
+                ],
+            ],
         ];
+    }
+
+    /**
+     * Saved (or half-typed) data with any missing keys filled from defaultData(),
+     * so resumes saved before a field existed still render.
+     */
+    public static function withDefaults(mixed $data): array
+    {
+        $defaults = self::defaultData();
+        $data = array_replace($defaults, (array) $data);
+
+        $data['personal'] = array_replace($defaults['personal'], (array) $data['personal']);
+        $data['settings'] = array_replace_recursive($defaults['settings'], (array) $data['settings']);
+
+        return $data;
     }
 }

@@ -24,9 +24,7 @@ class ResumeRenderer
             $color = config('resume.default_color');
         }
 
-        $defaults = Resume::defaultData();
-        $data = array_replace($defaults, (array) $data);
-        $data['personal'] = array_replace($defaults['personal'], (array) ($data['personal'] ?? []));
+        $data = Resume::withDefaults($data);
 
         $photo = null;
 

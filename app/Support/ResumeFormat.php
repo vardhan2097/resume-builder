@@ -51,6 +51,14 @@ class ResumeFormat
         return array_values(array_filter(array_map(self::lines(...), $blocks)));
     }
 
+    /**
+     * Whether a rated section (skills, tools, languages) should show its 1–5 levels.
+     */
+    public static function showLevels(array $data, string $section): bool
+    {
+        return (bool) ($data['settings']['show_levels'][$section] ?? true);
+    }
+
     public static function filled(mixed $items, string ...$keys): array
     {
         return array_values(array_filter((array) $items, function ($item) use ($keys) {

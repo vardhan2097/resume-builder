@@ -80,15 +80,17 @@
 <table style="margin-top: 10px;">
     <tr>
         <td class="sidebar">
-            @foreach (['Skills' => $skills, 'Software' => $tools, 'Languages' => $languages] as $label => $items)
+            @foreach (['skills' => ['Skills', $skills], 'tools' => ['Software', $tools], 'languages' => ['Languages', $languages]] as $section => [$label, $items])
                 @if (count($items))
                     <div class="heading">{{ $label }}</div>
                     <div class="rule"></div>
                     @foreach ($items as $item)
                         <div class="level-name">{{ $item['name'] }}</div>
-                        <div class="bar">
-                            <div class="bar-fill" style="width: {{ (int) $item['level'] * 20 }}%;"></div>
-                        </div>
+                        @if (F::showLevels($data, $section))
+                            <div class="bar">
+                                <div class="bar-fill" style="width: {{ (int) $item['level'] * 20 }}%;"></div>
+                            </div>
+                        @endif
                     @endforeach
                 @endif
             @endforeach

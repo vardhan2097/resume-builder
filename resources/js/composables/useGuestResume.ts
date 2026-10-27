@@ -71,6 +71,14 @@ export function withDefaults(
         ...defaults,
         ...data,
         personal: { ...defaults.personal, ...data?.personal },
+        settings: {
+            ...defaults.settings,
+            ...data?.settings,
+            show_levels: {
+                ...defaults.settings.show_levels,
+                ...data?.settings?.show_levels,
+            },
+        },
     };
 }
 

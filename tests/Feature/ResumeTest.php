@@ -2,6 +2,7 @@
 
 use App\Models\Resume;
 use App\Models\User;
+use App\Services\ResumeRenderer;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpWord\IOFactory;
@@ -415,3 +416,88 @@ test('summary line breaks are kept in the docx', function () {
         ->and(array_search('Immediate joiner & <ready>.', $texts))->toBe(array_search('Now looking for a PHP role.', $texts) + 1)
         ->and($xml)->not->toContain('<w:br/>');
 });
+
+function ratedData(array $showLevels = []): array
+{
+    $data = Resume::defaultData();
+    $data['skills'] = [['id' => 's1', 'name' => 'Laravel', 'level' => 4]];
+    $data['tools'] = [['id' => 't1', 'name' => 'Docker', 'level' => 3]];
+    $data['languages'] = [['id' => 'l1', 'name' => 'Konkani', 'level' => 5]];
+    $data['settings']['show_levels'] = array_replace($data['settings']['show_levels'], $showLevels);
+
+    return $data;
+}
+
+test('ratings can be hidden per section in the preview', function () {
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+
+    $html = $this->actingAs($user)
+        ->post(route('resumes.preview', $resume), [
+            'template' => 'classic',
+            'color' => '#0f766e',
+            'data' => ratedData(['skills' => false, 'languages' => false]),
+        ])
+        ->assertOk()
+        ->assertSee(['Laravel', 'Docker', 'Konkani'])
+        ->getContent();
+
+    // Only the tools section still draws a rating bar.
+    expect(substr_count($html, 'class="bar-fill"'))->toBe(1)
+        ->and($html)->toContain('width: 60%');
+});
+
+test('ratings show by default, including for resumes saved before the setting existed', function () {
+    $user = User::factory()->create();
+    $data = ratedData();
+    unset($data['settings']);
+    $resume = $user->resumes()->create(['data' => $data]);
+
+    $html = app(ResumeRenderer::class)->render('classic', '#0f766e', $resume->data);
+
+    expect(substr_count($html, 'class="bar-fill"'))->toBe(3);
+
+    $this->actingAs($user)
+        ->get(route('resumes.edit', $resume))
+        ->assertInertia(fn ($page) => $page->where('resume.data.settings.show_levels', [
+            'skills' => true, 'tools' => true, 'languages' => true,
+        ]));
+});
+
+test('the ratings setting is saved', function () {
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+
+    $this->actingAs($user)
+        ->put(route('resumes.update', $resume), validPayload(['data' => ratedData(['tools' => false])]))
+        ->assertSessionHasNoErrors();
+
+    expect($resume->fresh()->data['settings']['show_levels'])
+        ->toBe(['skills' => true, 'tools' => false, 'languages' => true]);
+});
+
+test('saving without settings is still accepted', function () {
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+    $data = ratedData();
+    unset($data['settings']);
+
+    $this->actingAs($user)
+        ->put(route('resumes.update', $resume), validPayload(['data' => $data]))
+        ->assertSessionHasNoErrors();
+});
+
+test('invalid ratings settings are rejected', function (array $settings, string $error) {
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+    $data = ratedData();
+    $data['settings'] = $settings;
+
+    $this->actingAs($user)
+        ->put(route('resumes.update', $resume), validPayload(['data' => $data]))
+        ->assertSessionHasErrors($error);
+})->with([
+    'unknown setting' => [['theme' => 'dark'], 'data.settings'],
+    'unknown section' => [['show_levels' => ['hobbies' => true]], 'data.settings.show_levels'],
+    'not a boolean' => [['show_levels' => ['skills' => 'maybe']], 'data.settings.show_levels.skills'],
+]);

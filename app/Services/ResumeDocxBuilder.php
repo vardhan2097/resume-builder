@@ -18,9 +18,8 @@ class ResumeDocxBuilder
     {
         Settings::setOutputEscapingEnabled(true);
 
-        $defaults = Resume::defaultData();
-        $data = array_replace($defaults, (array) $resume->data);
-        $p = array_replace($defaults['personal'], (array) ($data['personal'] ?? []));
+        $data = Resume::withDefaults($resume->data);
+        $p = $data['personal'];
 
         $this->color = preg_match('/^#[0-9a-fA-F]{6}$/', (string) $resume->color)
             ? ltrim($resume->color, '#')

@@ -19,7 +19,7 @@ class ResumeRules
             'template' => ['required', 'string', 'max:50'],
             'color' => ['required', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
 
-            'data' => ['required', 'array:personal,experience,education,skills,tools,projects,languages,certifications,hobbies,references'],
+            'data' => ['required', 'array:personal,experience,education,skills,tools,projects,languages,certifications,hobbies,references,settings'],
 
             'data.personal' => ['required', 'array:full_name,job_title,email,phone,location,website,linkedin,summary'],
             'data.personal.full_name' => ['nullable', 'string', 'max:100'],
@@ -89,6 +89,11 @@ class ResumeRules
             'data.references.*.company' => ['nullable', 'string', 'max:150'],
             'data.references.*.phone' => ['nullable', 'string', 'max:30'],
             'data.references.*.email' => ['nullable', 'email', 'max:150'],
+
+            // Optional so data saved before settings existed is still accepted.
+            'data.settings' => ['sometimes', 'array:show_levels'],
+            'data.settings.show_levels' => ['sometimes', 'array:skills,tools,languages'],
+            'data.settings.show_levels.*' => ['boolean'],
         ];
 
         if ($strict) {

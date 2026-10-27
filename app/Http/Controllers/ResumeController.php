@@ -63,7 +63,7 @@ class ResumeController extends Controller
                 'title' => $resume->title,
                 'template' => $resume->template,
                 'color' => $resume->color,
-                'data' => array_replace(Resume::defaultData(), $resume->data ?? []),
+                'data' => Resume::withDefaults($resume->data),
                 'photo_url' => $resume->photo_path
                     ? route('resumes.photo.show', $resume).'?v='.md5($resume->photo_path)
                     : null,
