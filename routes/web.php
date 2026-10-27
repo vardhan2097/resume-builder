@@ -28,6 +28,12 @@ Route::middleware(['auth', 'verified'])->group(function ()
     Route::get('resumes/{resume}/photo', [ResumeController::class, 'showPhoto'])
         ->name('resumes.photo.show');
 
+    Route::get('resumes/{resume}/photo/original', [ResumeController::class, 'showOriginalPhoto'])
+        ->name('resumes.photo.original');
+
+    Route::put('resumes/{resume}/photo/frame', [ResumeController::class, 'framePhoto'])
+        ->name('resumes.photo.frame');
+
     Route::delete('resumes/{resume}/photo', [ResumeController::class, 'deletePhoto'])
         ->name('resumes.photo.delete');
 

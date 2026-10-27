@@ -14,6 +14,7 @@ class Resume extends Model
         'color',
         'data',
         'photo_path',
+        'photo_original_path',
     ];
 
     protected function casts(): array
@@ -37,9 +38,7 @@ class Resume extends Model
         });
 
         static::deleted(function (Resume $resume) {
-            if ($resume->photo_path) {
-                Storage::disk('local')->delete($resume->photo_path);
-            }
+            Storage::disk('local')->delete(array_filter([$resume->photo_path, $resume->photo_original_path]));
         });
     }
 

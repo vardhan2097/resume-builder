@@ -146,6 +146,7 @@ function download(kind: 'pdf' | 'docx') {
                 v-if="templates[form.template]?.photo"
                 :resume-id="resume.id"
                 :photo-url="resume.photo_url"
+                :photo-original-url="resume.photo_original_url"
                 :initials="(form.content.personal.full_name || 'CV').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()"
             />
 

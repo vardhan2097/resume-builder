@@ -272,3 +272,100 @@ test('import rejects unsupported files', function () {
 
     expect($user->resumes()->count())->toBe(0);
 });
+function twoTonePortrait(): UploadedFile
+{
+    // 400x800: top half red, bottom half blue.
+    $image = imagecreatetruecolor(400, 800);
+    imagefilledrectangle($image, 0, 0, 399, 399, imagecolorallocate($image, 255, 0, 0));
+    imagefilledrectangle($image, 0, 400, 399, 799, imagecolorallocate($image, 0, 0, 255));
+
+    $path = tempnam(sys_get_temp_dir(), 'photo').'.png';
+    imagepng($image, $path);
+
+    return new UploadedFile($path, 'portrait.png', 'image/png', null, true);
+}
+
+function centrePixel(string $jpeg): array
+{
+    $image = imagecreatefromstring($jpeg);
+    $rgb = imagecolorat($image, 200, 200);
+
+    return [($rgb >> 16) & 0xFF, $rgb & 0xFF];
+}
+
+test('photo upload applies the chosen crop and keeps the original', function () {
+    Storage::fake('local');
+
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+
+    $this->actingAs($user)
+        ->post(route('resumes.photo.upload', $resume), [
+            'photo' => twoTonePortrait(),
+            'crop' => ['x' => 0, 'y' => 0, 'size' => 1],
+        ])
+        ->assertSessionHasNoErrors();
+
+    $resume->refresh();
+
+    Storage::disk('local')->assertExists($resume->photo_original_path);
+    [$red, $blue] = centrePixel(Storage::disk('local')->get($resume->photo_path));
+    expect($red)->toBeGreaterThan(200)->and($blue)->toBeLessThan(50);
+});
+
+test('photo can be re-framed from the original', function () {
+    Storage::fake('local');
+
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+
+    $this->actingAs($user)->post(route('resumes.photo.upload', $resume), [
+        'photo' => twoTonePortrait(),
+        'crop' => ['x' => 0, 'y' => 0, 'size' => 1],
+    ]);
+
+    $oldPath = $resume->refresh()->photo_path;
+
+    $this->actingAs($user)
+        ->put(route('resumes.photo.frame', $resume), [
+            'crop' => ['x' => 0, 'y' => 0.5, 'size' => 1],
+        ])
+        ->assertSessionHasNoErrors();
+
+    $resume->refresh();
+
+    Storage::disk('local')->assertMissing($oldPath);
+    [$red, $blue] = centrePixel(Storage::disk('local')->get($resume->photo_path));
+    expect($blue)->toBeGreaterThan(200)->and($red)->toBeLessThan(50);
+});
+
+test('re-framing requires a crop', function () {
+    Storage::fake('local');
+
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+
+    $this->actingAs($user)
+        ->put(route('resumes.photo.frame', $resume), [])
+        ->assertSessionHasErrors('crop');
+});
+
+test('removing a photo deletes the original too', function () {
+    Storage::fake('local');
+
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+
+    $this->actingAs($user)->post(route('resumes.photo.upload', $resume), [
+        'photo' => twoTonePortrait(),
+    ]);
+
+    $resume->refresh();
+    $paths = [$resume->photo_path, $resume->photo_original_path];
+
+    $this->actingAs($user)->delete(route('resumes.photo.delete', $resume));
+
+    Storage::disk('local')->assertMissing($paths[0]);
+    Storage::disk('local')->assertMissing($paths[1]);
+    expect($resume->refresh()->photo_original_path)->toBeNull();
+});

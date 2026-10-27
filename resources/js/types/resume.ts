@@ -80,6 +80,7 @@ export type Resume = {
     template: string;
     color: string;
     photo_url: string | null;
+    photo_original_url: string | null;
     data: ResumeData;
 };
 
