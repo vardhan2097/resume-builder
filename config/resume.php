@@ -20,5 +20,10 @@ return [
             'photo' => true,
             'palettes' => ['#0f766e', '#1e3a8a', '#7c3aed', '#b91c1c', '#334155', '#c2410c'],
         ],
+        'executive' => [
+            'name' => 'Executive',
+            'photo' => true,
+            'palettes' => ['#1f3a5f', '#334155', '#0f766e', '#4c1d95', '#7c2d12', '#9f1239'],
+        ],
     ],
 ];
