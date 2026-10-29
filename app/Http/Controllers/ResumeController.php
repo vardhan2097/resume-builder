@@ -17,6 +17,9 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ResumeController extends Controller
 {
@@ -103,14 +106,14 @@ class ResumeController extends Controller
         ));
     }
 
-    public function pdf(Resume $resume, ResumeDownloads $downloads)
+    public function pdf(Resume $resume, ResumeDownloads $downloads): SymfonyResponse
     {
         Gate::authorize('update', $resume);
 
         return $downloads->pdf($resume);
     }
 
-    public function docx(Resume $resume, ResumeDownloads $downloads)
+    public function docx(Resume $resume, ResumeDownloads $downloads): BinaryFileResponse
     {
         Gate::authorize('update', $resume);
 
@@ -121,7 +124,7 @@ class ResumeController extends Controller
     {
         Gate::authorize('update', $resume);
 
-        $validated = $request->validate([
+        $request->validate([
             'photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             ...self::cropRules(),
         ]);
@@ -141,7 +144,7 @@ class ResumeController extends Controller
 
         $resume->update(['photo_original_path' => $originalPath]);
 
-        $this->storeFramedPhoto($resume, $original, $validated['crop'] ?? null);
+        $this->storeFramedPhoto($resume, $original, $this->crop($request));
 
         return back();
     }
@@ -150,19 +153,19 @@ class ResumeController extends Controller
     {
         Gate::authorize('update', $resume);
 
-        $validated = $request->validate([
+        $request->validate([
             ...self::cropRules(),
             'crop' => ['required', 'array'],
         ]);
 
         abort_unless($resume->photo_original_path && Storage::disk('local')->exists($resume->photo_original_path), 404);
 
-        $this->storeFramedPhoto($resume, Storage::disk('local')->get($resume->photo_original_path), $validated['crop']);
+        $this->storeFramedPhoto($resume, Storage::disk('local')->get($resume->photo_original_path), $this->crop($request));
 
         return back();
     }
 
-    public function showPhoto(Resume $resume)
+    public function showPhoto(Resume $resume): StreamedResponse
     {
         Gate::authorize('update', $resume);
 
@@ -171,7 +174,7 @@ class ResumeController extends Controller
         return Storage::disk('local')->response($resume->photo_path);
     }
 
-    public function showOriginalPhoto(Resume $resume)
+    public function showOriginalPhoto(Resume $resume): StreamedResponse
     {
         Gate::authorize('update', $resume);
 
@@ -193,6 +196,8 @@ class ResumeController extends Controller
     /**
      * Crop is a square given as fractions of the source image: x/y of the top-left
      * corner (relative to width/height) and size (relative to width).
+     *
+     * @return array<string, list<string>>
      */
     private static function cropRules(): array
     {
@@ -204,6 +209,27 @@ class ResumeController extends Controller
         ];
     }
 
+    /**
+     * The validated crop (see cropRules()) as numbers, or null when none was sent.
+     *
+     * @return array{x: float, y: float, size: float}|null
+     */
+    private function crop(Request $request): ?array
+    {
+        if (! $request->filled('crop')) {
+            return null;
+        }
+
+        return [
+            'x' => $request->float('crop.x'),
+            'y' => $request->float('crop.y'),
+            'size' => $request->float('crop.size'),
+        ];
+    }
+
+    /**
+     * @param  array{x: float, y: float, size: float}|null  $crop
+     */
     private function storeFramedPhoto(Resume $resume, string $source, ?array $crop): void
     {
         $image = $this->images()->read($source);

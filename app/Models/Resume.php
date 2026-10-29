@@ -4,8 +4,38 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
+/**
+ * The JSON stored in resumes.data, after withDefaults() has filled any missing keys.
+ *
+ * @phpstan-type ResumeData array{
+ *     personal: array<string, string>,
+ *     experience: list<array<string, mixed>>,
+ *     education: list<array<string, mixed>>,
+ *     skills: list<array<string, mixed>>,
+ *     tools: list<array<string, mixed>>,
+ *     projects: list<array<string, mixed>>,
+ *     languages: list<array<string, mixed>>,
+ *     certifications: list<array<string, mixed>>,
+ *     hobbies: list<string>,
+ *     references: list<array<string, mixed>>,
+ *     settings: array{show_levels: array<string, bool>, section_order: list<string>}
+ * }
+ *
+ * @property int $id
+ * @property int $user_id
+ * @property string $title
+ * @property string $template
+ * @property string $color
+ * @property ResumeData $data
+ * @property string|null $photo_path
+ * @property string|null $photo_original_path
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read User $user
+ */
 class Resume extends Model
 {
     protected $fillable = [
@@ -17,6 +47,9 @@ class Resume extends Model
         'photo_original_path',
     ];
 
+    /**
+     * @return array<string, string>
+     */
     protected function casts(): array
     {
         return [
@@ -24,6 +57,9 @@ class Resume extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -51,6 +87,9 @@ class Resume extends Model
         'certifications', 'languages', 'hobbies', 'references',
     ];
 
+    /**
+     * @return ResumeData
+     */
     public static function defaultData(): array
     {
         return [
@@ -89,6 +128,8 @@ class Resume extends Model
     /**
      * Saved (or half-typed) data with any missing keys filled from defaultData(),
      * so resumes saved before a field existed still render.
+     *
+     * @return ResumeData
      */
     public static function withDefaults(mixed $data): array
     {

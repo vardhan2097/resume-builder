@@ -9,6 +9,12 @@ use InvalidArgumentException;
 use Smalot\PdfParser\Parser as PdfParser;
 use ZipArchive;
 
+/**
+ * @phpstan-import-type ResumeData from Resume
+ *
+ * @phpstan-type DateRange array{start: string, end: string, current: bool, match: string}
+ * @phpstan-type Entry array{heading: list<string>, range: DateRange|null, bullets: list<string>}
+ */
 class CvParser
 {
     private const SECTIONS = [
@@ -28,6 +34,9 @@ class CvParser
 
     private const BULLET = '/^[•\-\*▪●◦‣–·]\s*/u';
 
+    /**
+     * @return ResumeData
+     */
     public function parseFile(string $path, string $extension): array
     {
         $text = match ($extension) {
@@ -43,6 +52,9 @@ class CvParser
         return $this->parseText($text);
     }
 
+    /**
+     * @return ResumeData
+     */
     public function parseText(string $text): array
     {
         $lines = $this->cleanLines($text);
@@ -94,16 +106,25 @@ class CvParser
 
     // ---------- Structure ----------
 
+    /**
+     * @return list<string>
+     */
     private function cleanLines(string $text): array
     {
         $text = preg_replace('/\t+/', ' | ', $text);
-        $lines = preg_split('/\R/u', $text);
+        $lines = preg_split('/\R/u', $text) ?: [];
 
         $lines = array_map(fn ($line) => trim(preg_replace('/\s+/u', ' ', $line)), $lines);
 
         return array_values(array_filter($lines, fn ($line) => $line !== '' && $line !== '|'));
     }
 
+    /**
+     * Lines before the first recognised heading, and the lines under each section key.
+     *
+     * @param  list<string>  $lines
+     * @return array{0: list<string>, 1: array<string, list<string>>}
+     */
     private function splitSections(array $lines): array
     {
         $header = [];
@@ -149,6 +170,10 @@ class CvParser
 
     // ---------- Header / contact ----------
 
+    /**
+     * @param  list<string>  $header
+     * @return array<string, string>
+     */
     private function parseHeader(array $header, string $fullText): array
     {
         $personal = Resume::defaultData()['personal'];
@@ -180,7 +205,7 @@ class CvParser
         $personal['job_title'] = mb_substr($nameLike[1] ?? '', 0, 100);
 
         foreach ($header as $line) {
-            $parts = preg_split('/\s*[|•·]\s*/u', $line);
+            $parts = preg_split('/\s*[|•·]\s*/u', $line) ?: [];
 
             if (count($parts) < 2) {
                 continue;
@@ -203,11 +228,14 @@ class CvParser
             return false;
         }
 
-        $words = preg_split('/\s+/', trim($line));
+        $words = preg_split('/\s+/', trim($line)) ?: [];
 
         return count($words) >= 1 && count($words) <= 6 && mb_strlen($line) <= 60;
     }
 
+    /**
+     * @param  array<string, string>  $personal
+     */
     private function looksLikeLocation(string $part, array $personal): bool
     {
         $part = trim($part);
@@ -234,12 +262,16 @@ class CvParser
         return trim(preg_replace(self::BULLET, '', $line));
     }
 
+    /**
+     * @param  list<string>  $lines
+     * @return list<string>
+     */
     private function splitItems(array $lines): array
     {
         $items = [];
 
         foreach ($lines as $line) {
-            foreach (preg_split('/\s*[,|•·;]\s*/u', $this->stripBullet($line)) as $item) {
+            foreach (preg_split('/\s*[,|•·;]\s*/u', $this->stripBullet($line)) ?: [] as $item) {
                 $item = trim($item);
 
                 if ($item !== '' && mb_strlen($item) <= 60) {
@@ -251,6 +283,10 @@ class CvParser
         return array_values(array_unique($items));
     }
 
+    /**
+     * @param  list<string>  $lines
+     * @return list<array{id: string, name: string, level: int}>
+     */
     private function levelItems(array $lines, bool $isLanguage = false): array
     {
         return array_map(function ($item) use ($isLanguage) {
@@ -275,6 +311,13 @@ class CvParser
 
     // ---------- Dated entries (experience, education, projects) ----------
 
+    /**
+     * Group lines into entries: a heading (up to three lines), an optional date
+     * range and the bullet lines that follow.
+     *
+     * @param  list<string>  $lines
+     * @return list<Entry>
+     */
     private function entries(array $lines): array
     {
         $entries = [];
@@ -303,19 +346,22 @@ class CvParser
                 continue;
             }
 
-            if (! $isBullet && ($current === null || $current['bullets'])) {
-                if ($current) {
-                    $entries[] = $current;
+            if (! $isBullet) {
+                // A plain line after bullets (or before any entry) starts a new entry.
+                if ($current === null || $current['bullets']) {
+                    if ($current) {
+                        $entries[] = $current;
+                    }
+                    $current = ['heading' => [$text], 'range' => null, 'bullets' => []];
+
+                    continue;
                 }
-                $current = ['heading' => [$text], 'range' => null, 'bullets' => []];
 
-                continue;
-            }
+                if (count($current['heading']) < 3) {
+                    $current['heading'][] = $text;
 
-            if (! $isBullet && count($current['heading']) < 3) {
-                $current['heading'][] = $text;
-
-                continue;
+                    continue;
+                }
             }
 
             $current ??= ['heading' => [], 'range' => null, 'bullets' => []];
@@ -329,6 +375,10 @@ class CvParser
         return $entries;
     }
 
+    /**
+     * @param  list<string>  $lines
+     * @return list<array{id: string, job_title: string, company: string, location: string, start_date: string, end_date: string, current: bool, description: string}>
+     */
     private function parseExperience(array $lines): array
     {
         return array_map(function ($entry) {
@@ -351,6 +401,10 @@ class CvParser
         }, $this->entries($lines));
     }
 
+    /**
+     * @param  list<string>  $lines
+     * @return list<array{id: string, degree: string, institution: string, location: string, start_date: string, end_date: string, score: string, description: string}>
+     */
     private function parseEducation(array $lines): array
     {
         return array_map(function ($entry) {
@@ -383,6 +437,10 @@ class CvParser
         }, $this->entries($lines));
     }
 
+    /**
+     * @param  list<string>  $lines
+     * @return list<array{id: string, name: string, duration: string, link: string, description: string}>
+     */
     private function parseProjects(array $lines): array
     {
         return array_map(function ($entry) {
@@ -398,6 +456,11 @@ class CvParser
         }, $this->entries($lines));
     }
 
+    /**
+     * "Title at Company" (or "Title - Company", "Title, Company") as [title, company].
+     *
+     * @return array{0: string, 1: string}
+     */
     private function splitTitle(string $heading): array
     {
         $parts = preg_split('/\s+(?:at|@)\s+|\s+[-–|]\s+|,\s+/u', $heading, 2);
@@ -407,6 +470,9 @@ class CvParser
 
     // ---------- Dates ----------
 
+    /**
+     * @return DateRange|null
+     */
     private function dateRange(string $text): ?array
     {
         $token = '(?:'.self::MONTH.'\.?\s*,?\s*(?:19|20)\d{2}|\d{1,2}\/(?:19|20)\d{2}|(?:19|20)\d{2})';

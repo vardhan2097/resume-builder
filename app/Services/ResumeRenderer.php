@@ -4,9 +4,12 @@ namespace App\Services;
 
 use App\Models\Resume;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\View\Factory as ViewFactory;
 
 class ResumeRenderer
 {
+    public function __construct(private ViewFactory $views) {}
+
     public function render(
         ?string $template,
         ?string $color,
@@ -32,7 +35,11 @@ class ResumeRenderer
             $photo = 'data:image/jpeg;base64,'.base64_encode(Storage::disk('local')->get($photoPath));
         }
 
-        return view("resumes.templates.{$template}", [
+        // The template name comes from config (checked above), not a literal view name,
+        // so resolve its file explicitly; the finder throws if the file is missing.
+        $file = $this->views->getFinder()->find("resumes.templates.{$template}");
+
+        return $this->views->file($file, [
             'color' => $color,
             'data' => $data,
             'pdf' => $pdf,
