@@ -1,43 +1,97 @@
 <script setup lang="ts">
 import { router, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { onBeforeUnmount, ref } from 'vue';
+import PhotoCropDialog from '@/components/resume/PhotoCropDialog.vue';
+import type { PhotoCrop } from '@/components/resume/PhotoCropDialog.vue';
 import { Button } from '@/components/ui/button';
 import photo from '@/routes/resumes/photo';
 
 const props = defineProps<{
     resumeId: number;
     photoUrl: string | null;
+    photoOriginalUrl: string | null;
     initials: string;
 }>();
 
 const fileInput = ref<HTMLInputElement | null>(null);
+const cropOpen = ref(false);
+const cropSrc = ref<string | null>(null);
+const framing = ref(false);
+let objectUrl: string | null = null;
 
-const form = useForm<{ photo: File | null }>({
+const form = useForm<{ photo: File | null; crop: PhotoCrop | null }>({
     photo: null,
+    crop: null,
 });
 
 function choose() {
     fileInput.value?.click();
 }
 
-function upload(event: Event) {
+function releaseObjectUrl() {
+    if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+        objectUrl = null;
+    }
+}
+
+function resetInput() {
+    if (fileInput.value) {
+        fileInput.value.value = '';
+    }
+}
+
+function pick(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0];
 
     if (!file) {
         return;
     }
 
+    releaseObjectUrl();
+    objectUrl = URL.createObjectURL(file);
     form.photo = file;
-    form.post(photo.upload(props.resumeId).url, {
+    cropSrc.value = objectUrl;
+    cropOpen.value = true;
+}
+
+function adjust() {
+    form.photo = null;
+    cropSrc.value = props.photoOriginalUrl;
+    cropOpen.value = true;
+}
+
+function close() {
+    cropOpen.value = false;
+    form.reset();
+    resetInput();
+    releaseObjectUrl();
+}
+
+function save(crop: PhotoCrop) {
+    const options = {
         preserveScroll: true,
         preserveState: true,
-        onFinish: () => {
-            form.reset();
-            if (fileInput.value) {
-                fileInput.value.value = '';
-            }
+        onSuccess: close,
+        onError: close,
+    };
+
+    if (form.photo) {
+        form.crop = crop;
+        form.post(photo.upload(props.resumeId).url, options);
+
+        return;
+    }
+
+    framing.value = true;
+    router.put(
+        photo.frame(props.resumeId).url,
+        { crop },
+        {
+            ...options,
+            onFinish: () => (framing.value = false),
         },
-    });
+    );
 }
 
 function remove() {
@@ -50,6 +104,8 @@ function remove() {
         preserveState: true,
     });
 }
+
+onBeforeUnmount(releaseObjectUrl);
 </script>
 
 <template>
@@ -79,7 +135,22 @@ function remove() {
                         :disabled="form.processing"
                         @click="choose"
                     >
-                        {{ form.processing ? 'Uploading…' : photoUrl ? 'Change' : 'Upload' }}
+                        {{
+                            form.processing
+                                ? 'Uploading…'
+                                : photoUrl
+                                  ? 'Change'
+                                  : 'Upload'
+                        }}
+                    </Button>
+                    <Button
+                        v-if="photoUrl && photoOriginalUrl"
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        @click="adjust"
+                    >
+                        Adjust
                     </Button>
                     <Button
                         v-if="photoUrl"
@@ -91,7 +162,9 @@ function remove() {
                         Remove
                     </Button>
                 </div>
-                <p class="text-xs text-muted-foreground">JPG, PNG or WebP, up to 5MB.</p>
+                <p class="text-xs text-muted-foreground">
+                    JPG, PNG or WebP, up to 5MB.
+                </p>
                 <p v-if="form.errors.photo" class="text-xs text-red-600">
                     {{ form.errors.photo }}
                 </p>
@@ -103,7 +176,15 @@ function remove() {
             type="file"
             accept="image/jpeg,image/png,image/webp"
             class="hidden"
-            @change="upload"
+            @change="pick"
+        />
+
+        <PhotoCropDialog
+            v-model:open="cropOpen"
+            :src="cropSrc"
+            :processing="form.processing || framing"
+            @confirm="save"
+            @cancel="close"
         />
     </section>
 </template>

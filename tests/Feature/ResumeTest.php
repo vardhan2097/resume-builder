@@ -2,8 +2,11 @@
 
 use App\Models\Resume;
 use App\Models\User;
+use App\Services\ResumeRenderer;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpWord\IOFactory;
+use PhpOffice\PhpWord\PhpWord;
 
 test('guests are redirected to login', function () {
     $this->get(route('resumes.index'))->assertRedirect(route('login'));
@@ -239,13 +242,13 @@ test('user cannot see another users photo', function () {
 });
 
 test('user can import a docx cv', function () {
-    $word = new \PhpOffice\PhpWord\PhpWord();
+    $word = new PhpWord;
     $section = $word->addSection();
     foreach (['Asha Naik', 'Laravel Developer', 'asha@example.com | +91 98765 43210', 'Skills', 'PHP, Laravel, MySQL'] as $line) {
         $section->addText($line);
     }
     $path = sys_get_temp_dir().'/cv-test-'.uniqid().'.docx';
-    \PhpOffice\PhpWord\IOFactory::createWriter($word, 'Word2007')->save($path);
+    IOFactory::createWriter($word, 'Word2007')->save($path);
 
     $user = User::factory()->create();
 
@@ -271,4 +274,357 @@ test('import rejects unsupported files', function () {
         ->assertSessionHasErrors('cv');
 
     expect($user->resumes()->count())->toBe(0);
+});
+function twoTonePortrait(): UploadedFile
+{
+    // 400x800: top half red, bottom half blue.
+    $image = imagecreatetruecolor(400, 800);
+    imagefilledrectangle($image, 0, 0, 399, 399, imagecolorallocate($image, 255, 0, 0));
+    imagefilledrectangle($image, 0, 400, 399, 799, imagecolorallocate($image, 0, 0, 255));
+
+    $path = tempnam(sys_get_temp_dir(), 'photo').'.png';
+    imagepng($image, $path);
+
+    return new UploadedFile($path, 'portrait.png', 'image/png', null, true);
+}
+
+function centrePixel(string $jpeg): array
+{
+    $image = imagecreatefromstring($jpeg);
+    $rgb = imagecolorat($image, 200, 200);
+
+    return [($rgb >> 16) & 0xFF, $rgb & 0xFF];
+}
+
+test('photo upload applies the chosen crop and keeps the original', function () {
+    Storage::fake('local');
+
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+
+    $this->actingAs($user)
+        ->post(route('resumes.photo.upload', $resume), [
+            'photo' => twoTonePortrait(),
+            'crop' => ['x' => 0, 'y' => 0, 'size' => 1],
+        ])
+        ->assertSessionHasNoErrors();
+
+    $resume->refresh();
+
+    Storage::disk('local')->assertExists($resume->photo_original_path);
+    [$red, $blue] = centrePixel(Storage::disk('local')->get($resume->photo_path));
+    expect($red)->toBeGreaterThan(200)->and($blue)->toBeLessThan(50);
+});
+
+test('photo can be re-framed from the original', function () {
+    Storage::fake('local');
+
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+
+    $this->actingAs($user)->post(route('resumes.photo.upload', $resume), [
+        'photo' => twoTonePortrait(),
+        'crop' => ['x' => 0, 'y' => 0, 'size' => 1],
+    ]);
+
+    $oldPath = $resume->refresh()->photo_path;
+
+    $this->actingAs($user)
+        ->put(route('resumes.photo.frame', $resume), [
+            'crop' => ['x' => 0, 'y' => 0.5, 'size' => 1],
+        ])
+        ->assertSessionHasNoErrors();
+
+    $resume->refresh();
+
+    Storage::disk('local')->assertMissing($oldPath);
+    [$red, $blue] = centrePixel(Storage::disk('local')->get($resume->photo_path));
+    expect($blue)->toBeGreaterThan(200)->and($red)->toBeLessThan(50);
+});
+
+test('re-framing requires a crop', function () {
+    Storage::fake('local');
+
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+
+    $this->actingAs($user)
+        ->put(route('resumes.photo.frame', $resume), [])
+        ->assertSessionHasErrors('crop');
+});
+
+test('removing a photo deletes the original too', function () {
+    Storage::fake('local');
+
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+
+    $this->actingAs($user)->post(route('resumes.photo.upload', $resume), [
+        'photo' => twoTonePortrait(),
+    ]);
+
+    $resume->refresh();
+    $paths = [$resume->photo_path, $resume->photo_original_path];
+
+    $this->actingAs($user)->delete(route('resumes.photo.delete', $resume));
+
+    Storage::disk('local')->assertMissing($paths[0]);
+    Storage::disk('local')->assertMissing($paths[1]);
+    expect($resume->refresh()->photo_original_path)->toBeNull();
+});
+
+function resumeWithMultilineSummary(User $user): Resume
+{
+    $data = Resume::defaultData();
+    $data['personal']['summary'] = "Builds Laravel apps.\n\nNow looking for a PHP role.\nImmediate joiner & <ready>.";
+
+    return $user->resumes()->create(['data' => $data]);
+}
+
+test('summary line breaks are kept in the preview and pdf html', function () {
+    $user = User::factory()->create();
+    $resume = resumeWithMultilineSummary($user);
+
+    $this->actingAs($user)
+        ->postJson(route('resumes.preview', $resume), [
+            'template' => 'classic',
+            'color' => '#0f766e',
+            'data' => $resume->data,
+        ])
+        ->assertOk()
+        ->assertSee('<p class="">Builds Laravel apps.</p>', false)
+        ->assertSee('<p class="">Now looking for a PHP role.<br>Immediate joiner', false)
+        ->assertSee('Immediate joiner &amp; &lt;ready&gt;.', false);
+});
+
+test('summary line breaks are kept in the docx', function () {
+    $user = User::factory()->create();
+    $resume = resumeWithMultilineSummary($user);
+
+    $response = $this->actingAs($user)->get(route('resumes.docx', $resume))->assertOk();
+
+    $zip = new ZipArchive;
+    $zip->open($response->getFile()->getPathname());
+    $xml = $zip->getFromName('word/document.xml');
+    $zip->close();
+
+    // Each typed line is its own Word paragraph, in order.
+    preg_match_all('/<w:p>.*?<\/w:p>/s', $xml, $paragraphs);
+    $texts = array_map(fn ($p) => trim(html_entity_decode(strip_tags($p))), $paragraphs[0]);
+
+    expect($texts)->toContain('Builds Laravel apps.', 'Now looking for a PHP role.', 'Immediate joiner & <ready>.')
+        ->and(array_search('Immediate joiner & <ready>.', $texts))->toBe(array_search('Now looking for a PHP role.', $texts) + 1)
+        ->and($xml)->not->toContain('<w:br/>');
+});
+
+function ratedData(array $showLevels = []): array
+{
+    $data = Resume::defaultData();
+    $data['skills'] = [['id' => 's1', 'name' => 'Laravel', 'level' => 4]];
+    $data['tools'] = [['id' => 't1', 'name' => 'Docker', 'level' => 3]];
+    $data['languages'] = [['id' => 'l1', 'name' => 'Konkani', 'level' => 5]];
+    $data['settings']['show_levels'] = array_replace($data['settings']['show_levels'], $showLevels);
+
+    return $data;
+}
+
+test('ratings can be hidden per section in the preview', function () {
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+
+    $html = $this->actingAs($user)
+        ->post(route('resumes.preview', $resume), [
+            'template' => 'classic',
+            'color' => '#0f766e',
+            'data' => ratedData(['skills' => false, 'languages' => false]),
+        ])
+        ->assertOk()
+        ->assertSee(['Laravel', 'Docker', 'Konkani'])
+        ->getContent();
+
+    // Only the tools section still draws a rating bar; the others are compact tags.
+    expect(substr_count($html, 'class="bar-fill"'))->toBe(1)
+        ->and($html)->toContain('width: 60%')
+        ->and($html)->toContain('<span class="tag">Laravel</span>')
+        ->and($html)->toContain('<span class="tag">Konkani</span>')
+        ->and($html)->not->toContain('<span class="tag">Docker</span>');
+});
+
+test('ratings show by default, including for resumes saved before the setting existed', function () {
+    $user = User::factory()->create();
+    $data = ratedData();
+    unset($data['settings']);
+    $resume = $user->resumes()->create(['data' => $data]);
+
+    $html = app(ResumeRenderer::class)->render('classic', '#0f766e', $resume->data);
+
+    expect(substr_count($html, 'class="bar-fill"'))->toBe(3);
+
+    $this->actingAs($user)
+        ->get(route('resumes.edit', $resume))
+        ->assertInertia(fn ($page) => $page->where('resume.data.settings.show_levels', [
+            'skills' => true, 'tools' => true, 'languages' => true,
+        ]));
+});
+
+test('the ratings setting is saved', function () {
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+
+    $this->actingAs($user)
+        ->put(route('resumes.update', $resume), validPayload(['data' => ratedData(['tools' => false])]))
+        ->assertSessionHasNoErrors();
+
+    expect($resume->fresh()->data['settings']['show_levels'])
+        ->toBe(['skills' => true, 'tools' => false, 'languages' => true]);
+});
+
+test('saving without settings is still accepted', function () {
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+    $data = ratedData();
+    unset($data['settings']);
+
+    $this->actingAs($user)
+        ->put(route('resumes.update', $resume), validPayload(['data' => $data]))
+        ->assertSessionHasNoErrors();
+});
+
+test('invalid ratings settings are rejected', function (array $settings, string $error) {
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+    $data = ratedData();
+    $data['settings'] = $settings;
+
+    $this->actingAs($user)
+        ->put(route('resumes.update', $resume), validPayload(['data' => $data]))
+        ->assertSessionHasErrors($error);
+})->with([
+    'unknown setting' => [['theme' => 'dark'], 'data.settings'],
+    'unknown section' => [['show_levels' => ['hobbies' => true]], 'data.settings.show_levels'],
+    'not a boolean' => [['show_levels' => ['skills' => 'maybe']], 'data.settings.show_levels.skills'],
+]);
+
+test('github link is saved and shown in the preview and docx', function () {
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+    $data = Resume::defaultData();
+    $data['personal']['github'] = 'https://github.com/shrivardhan';
+
+    $this->actingAs($user)
+        ->put(route('resumes.update', $resume), validPayload(['data' => $data]))
+        ->assertSessionHasNoErrors();
+
+    expect($resume->fresh()->data['personal']['github'])->toBe('https://github.com/shrivardhan');
+
+    $this->actingAs($user)
+        ->post(route('resumes.preview', $resume), ['template' => 'classic', 'color' => '#0f766e', 'data' => $data])
+        ->assertSee('https://github.com/shrivardhan');
+
+    $response = $this->actingAs($user)->get(route('resumes.docx', $resume))->assertOk();
+    $zip = new ZipArchive;
+    $zip->open($response->getFile()->getPathname());
+    expect($zip->getFromName('word/document.xml'))->toContain('https://github.com/shrivardhan');
+    $zip->close();
+});
+
+test('github must be a url', function () {
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+    $data = Resume::defaultData();
+    $data['personal']['github'] = 'not a link';
+
+    $this->actingAs($user)
+        ->put(route('resumes.update', $resume), validPayload(['data' => $data]))
+        ->assertSessionHasErrors('data.personal.github');
+});
+
+test('resumes saved before github existed get an empty github field', function () {
+    $user = User::factory()->create();
+    $data = Resume::defaultData();
+    unset($data['personal']['github']);
+    $resume = $user->resumes()->create(['data' => $data]);
+
+    $this->actingAs($user)
+        ->get(route('resumes.edit', $resume))
+        ->assertInertia(fn ($page) => $page->where('resume.data.personal.github', ''));
+});
+
+test('a partial saved section order is not padded with duplicates', function () {
+    $data = Resume::withDefaults(['settings' => ['section_order' => ['references', 'experience']]]);
+
+    expect($data['settings']['section_order'])->toBe(['references', 'experience'])
+        ->and($data['settings']['show_levels'])->toBe(['skills' => true, 'tools' => true, 'languages' => true]);
+});
+
+test('section order is saved', function () {
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+    $data = Resume::defaultData();
+    $data['settings']['section_order'] = array_reverse(Resume::SECTIONS);
+
+    $this->actingAs($user)
+        ->put(route('resumes.update', $resume), validPayload(['data' => $data]))
+        ->assertSessionHasNoErrors();
+
+    expect($resume->fresh()->data['settings']['section_order'])->toBe(array_reverse(Resume::SECTIONS));
+});
+
+test('invalid section orders are rejected', function (array $order, string $error) {
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create();
+    $data = Resume::defaultData();
+    $data['settings']['section_order'] = $order;
+
+    $this->actingAs($user)
+        ->put(route('resumes.update', $resume), validPayload(['data' => $data]))
+        ->assertSessionHasErrors($error);
+})->with([
+    'unknown section' => [['experience', 'photos'], 'data.settings.section_order.1'],
+    'duplicate' => [['experience', 'experience'], 'data.settings.section_order.0'],
+]);
+
+function orderedResumeData(array $order): array
+{
+    $data = Resume::defaultData();
+    $data['experience'][] = ['id' => 'e1', 'job_title' => 'Backend Dev', 'company' => 'TenTwenty', 'location' => '', 'start_date' => '2024-01', 'end_date' => '', 'current' => true, 'description' => ''];
+    $data['projects'][] = ['id' => 'p1', 'name' => 'Resume Builder', 'duration' => '', 'link' => '', 'description' => ''];
+    $data['education'][] = ['id' => 'd1', 'degree' => 'BSc CS', 'institution' => 'Goa University', 'location' => '', 'start_date' => '', 'end_date' => '', 'score' => '', 'description' => ''];
+    $data['certifications'][] = ['id' => 'c1', 'name' => 'AWS SA', 'issuer' => 'Amazon', 'date' => '2024-05'];
+    $data['skills'][] = ['id' => 's1', 'name' => 'Laravel', 'level' => 4];
+    $data['tools'][] = ['id' => 't1', 'name' => 'Docker', 'level' => 3];
+    $data['settings']['section_order'] = $order;
+
+    return $data;
+}
+
+test('classic template puts education and certifications in the sidebar and follows the order', function () {
+    $data = orderedResumeData(['projects', 'tools', 'certifications', 'experience', 'skills', 'education']);
+
+    $html = app(ResumeRenderer::class)->render('classic', '#0f766e', $data);
+    [$sidebar, $main] = explode('<td class="main">', $html);
+
+    expect($sidebar)->toContain('Goa University', 'AWS SA')
+        ->and($main)->not->toContain('Goa University')
+        ->and($main)->not->toContain('AWS SA')
+        // Sidebar: tools, certifications, skills, education.
+        ->and(strpos($sidebar, 'Docker'))->toBeLessThan(strpos($sidebar, 'AWS SA'))
+        ->and(strpos($sidebar, 'AWS SA'))->toBeLessThan(strpos($sidebar, 'Laravel'))
+        ->and(strpos($sidebar, 'Laravel'))->toBeLessThan(strpos($sidebar, 'Goa University'))
+        // Main: projects before employment history.
+        ->and(strpos($main, 'Resume Builder'))->toBeLessThan(strpos($main, 'TenTwenty'));
+});
+
+test('docx follows the section order', function () {
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create(['data' => orderedResumeData(['education', 'projects', 'experience'])]);
+
+    $response = $this->actingAs($user)->get(route('resumes.docx', $resume))->assertOk();
+    $zip = new ZipArchive;
+    $zip->open($response->getFile()->getPathname());
+    $xml = $zip->getFromName('word/document.xml');
+    $zip->close();
+
+    expect(strpos($xml, 'EDUCATION'))->toBeLessThan(strpos($xml, 'PROJECTS'))
+        ->and(strpos($xml, 'PROJECTS'))->toBeLessThan(strpos($xml, 'EMPLOYMENT HISTORY'));
 });

@@ -24,6 +24,8 @@ use Illuminate\Support\Carbon;
  * @property string|null $remember_token
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property Carbon|null $last_active_at
+ * @property Carbon|null $deletion_warned_at
  */
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
@@ -45,6 +47,15 @@ class User extends Authenticatable implements MustVerifyEmail
             'last_active_at' => 'datetime',
             'deletion_warned_at' => 'datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        // Delete resumes through Eloquent first: the database cascade alone
+        // would skip Resume's deleted event and leave photo files on disk.
+        static::deleting(function (User $user) {
+            $user->resumes()->lazyById()->each(fn (Resume $resume) => $resume->delete());
+        });
     }
 
     public function resumes(): HasMany

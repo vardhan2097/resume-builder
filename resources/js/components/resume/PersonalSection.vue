@@ -13,6 +13,7 @@ const fields: { key: keyof Personal; label: string; type: string }[] = [
     { key: 'location', label: 'Location', type: 'text' },
     { key: 'website', label: 'Website', type: 'url' },
     { key: 'linkedin', label: 'LinkedIn URL', type: 'url' },
+    { key: 'github', label: 'GitHub URL', type: 'url' },
 ];
 </script>
 

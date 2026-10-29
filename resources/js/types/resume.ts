@@ -6,6 +6,7 @@ export type Personal = {
     location: string;
     website: string;
     linkedin: string;
+    github: string;
     summary: string;
 };
 
@@ -72,6 +73,29 @@ export type ResumeData = {
     certifications: CertificationItem[];
     hobbies: string[];
     references: ReferenceItem[];
+    settings: ResumeSettings;
+};
+
+/** Sections whose items carry a 1–5 level. */
+export type LevelSectionKey = 'skills' | 'tools' | 'languages';
+
+/** Sections the user can reorder (mirrors Resume::SECTIONS). */
+export type SectionKey =
+    | 'experience'
+    | 'education'
+    | 'skills'
+    | 'tools'
+    | 'projects'
+    | 'certifications'
+    | 'languages'
+    | 'hobbies'
+    | 'references';
+
+export type ResumeSettings = {
+    /** Show the rating next to each item, per section. */
+    show_levels: Record<LevelSectionKey, boolean>;
+    /** Order of the sections on the resume and in the editor. */
+    section_order: SectionKey[];
 };
 
 export type Resume = {
@@ -80,6 +104,7 @@ export type Resume = {
     template: string;
     color: string;
     photo_url: string | null;
+    photo_original_url: string | null;
     data: ResumeData;
 };
 
@@ -87,4 +112,12 @@ export type TemplateMeta = {
     name: string;
     photo: boolean;
     palettes: string[];
+};
+
+/** A resume built in guest mode; lives only in the browser until claimed. */
+export type GuestResume = {
+    title: string;
+    template: string;
+    color: string;
+    data: ResumeData;
 };

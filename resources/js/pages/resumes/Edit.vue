@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import ExperienceSection from '@/components/resume/ExperienceSection.vue';
-import LevelSection from '@/components/resume/LevelSection.vue';
-import PersonalSection from '@/components/resume/PersonalSection.vue';
+import { useEventListener, watchDebounced } from '@vueuse/core';
+import { computed, ref } from 'vue';
+import ContentSections from '@/components/resume/ContentSections.vue';
+import DesignSection from '@/components/resume/DesignSection.vue';
+import SectionOrder from '@/components/resume/SectionOrder.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { docx, index, pdf, update } from '@/routes/resumes';
+import { docx, index, pdf, preview, update } from '@/routes/resumes';
 import ResumePreview from '@/components/resume/ResumePreview.vue';
 import type { Resume, TemplateMeta } from '@/types/resume';
 import PhotoSection from '@/components/resume/PhotoSection.vue';
+import { useUnsavedChangesGuard } from '@/composables/useUnsavedChangesGuard';
 
 const props = defineProps<{
     resume: Resume;
@@ -28,23 +31,99 @@ const form = useForm({
     content: props.resume.data,
 });
 
+// Autosave this long after the last change.
+const AUTOSAVE_DELAY = 2000;
+
+const lastSavedAt = ref<Date | null>(null);
+const saveFailed = ref(false);
+
+// A save requested while another is in flight runs once that one finishes.
+let queued = false;
+let afterSave: (() => void) | undefined;
+
 function save(onSaved?: () => void) {
-    form
-        .transform(({ content, ...rest }) => ({ ...rest, data: content }))
-        .put(update(props.resume.id).url, {
+    if (onSaved) {
+        afterSave = onSaved;
+    }
+
+    if (form.processing) {
+        queued = true;
+
+        return;
+    }
+
+    // What is actually being sent. Typing that happens during the request is
+    // compared against this, so it still counts as unsaved afterwards.
+    const sent = JSON.parse(JSON.stringify(form.data())) as ReturnType<
+        typeof form.data
+    >;
+
+    form.transform(({ content, ...rest }) => ({ ...rest, data: content })).put(
+        update(props.resume.id).url,
+        {
             preserveScroll: true,
+            // Keep this component (and anything typed meanwhile) instead of
+            // re-creating it from the server's props.
+            preserveState: true,
             onSuccess: () => {
-                form.defaults();
-                onSaved?.();
+                form.defaults(sent);
+                lastSavedAt.value = new Date();
+                saveFailed.value = false;
+
+                const callback = afterSave;
+                afterSave = undefined;
+                callback?.();
             },
-        });
+            onError: () => {
+                saveFailed.value = true;
+                afterSave = undefined;
+            },
+            onFinish: () => {
+                if (queued) {
+                    queued = false;
+
+                    if (form.isDirty) {
+                        save();
+                    }
+                }
+            },
+        },
+    );
 }
 
-function download(kind: 'pdf' | 'docx') {
-    const url = kind === 'pdf' ? pdf(props.resume.id).url : docx(props.resume.id).url;
+watchDebounced(
+    () => form.data(),
+    () => {
+        if (form.isDirty) {
+            save();
+        }
+    },
+    { debounce: AUTOSAVE_DELAY, deep: true },
+);
 
-    if (!form.isDirty) {
+useEventListener(window, 'keydown', (event: KeyboardEvent) => {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        save();
+    }
+});
+
+useUnsavedChangesGuard(() => form.isDirty);
+
+const savedTime = computed(() =>
+    lastSavedAt.value?.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+    }),
+);
+
+function download(kind: 'pdf' | 'docx') {
+    const url =
+        kind === 'pdf' ? pdf(props.resume.id).url : docx(props.resume.id).url;
+
+    if (!form.isDirty && !form.processing) {
         window.location.href = url;
+
         return;
     }
 
@@ -59,14 +138,37 @@ function download(kind: 'pdf' | 'docx') {
 
     <div class="grid gap-6 p-4 lg:grid-cols-2">
         <form class="flex flex-col gap-6" @submit.prevent="save()">
-            <div class="sticky top-0 z-10 flex items-center gap-3 rounded-xl border bg-background p-3">
+            <div
+                class="sticky top-0 z-10 flex items-center gap-3 rounded-xl border bg-background p-3"
+            >
                 <Input v-model="form.title" class="font-medium" />
-                <span v-if="form.recentlySuccessful" class="text-sm whitespace-nowrap text-green-600">
-                    Saved ✓
+                <span
+                    class="text-sm whitespace-nowrap"
+                    :class="{
+                        'text-muted-foreground': form.processing,
+                        'text-red-600': !form.processing && saveFailed,
+                        'text-amber-600':
+                            !form.processing && !saveFailed && form.isDirty,
+                        'text-green-600':
+                            !form.processing && !saveFailed && !form.isDirty,
+                    }"
+                    aria-live="polite"
+                >
+                    <template v-if="form.processing">Saving…</template>
+                    <template v-else-if="saveFailed">Not saved</template>
+                    <template v-else-if="form.isDirty">Unsaved</template>
+                    <template v-else-if="savedTime"
+                        >Saved {{ savedTime }} ✓</template
+                    >
+                    <template v-else>All changes saved</template>
                 </span>
-                <span v-else-if="form.isDirty" class="text-sm whitespace-nowrap text-amber-600">
-                    Unsaved
-                </span>
+                <Button
+                    type="submit"
+                    :disabled="form.processing || !form.isDirty"
+                    title="Save (Ctrl+S)"
+                >
+                    Save
+                </Button>
                 <Button
                     type="button"
                     variant="outline"
@@ -89,7 +191,9 @@ function download(kind: 'pdf' | 'docx') {
                 v-if="Object.keys(form.errors).length"
                 class="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700"
             >
-                <p class="mb-1 font-medium">Please fix these:</p>
+                <p class="mb-1 font-medium">
+                    Your changes aren't saved yet. Please fix these:
+                </p>
                 <ul class="list-disc pl-5">
                     <li v-for="(message, field) in form.errors" :key="field">
                         {{ message }}
@@ -97,76 +201,36 @@ function download(kind: 'pdf' | 'docx') {
                 </ul>
             </div>
 
-            <section class="rounded-xl border p-5">
-                <h2 class="mb-4 text-lg font-semibold">Design</h2>
+            <DesignSection
+                v-model:template="form.template"
+                v-model:color="form.color"
+                :templates="templates"
+            />
 
-                <div class="grid gap-4 sm:grid-cols-2">
-                    <div class="grid gap-2">
-                        <label class="text-sm font-medium">Template</label>
-                        <select
-                            v-model="form.template"
-                            class="h-9 rounded-md border border-input bg-transparent px-2 text-sm"
-                        >
-                            <option v-for="(meta, key) in templates" :key="key" :value="key">
-                                {{ meta.name }}
-                            </option>
-                        </select>
-                    </div>
-
-                    <div class="grid gap-2">
-                        <label class="text-sm font-medium">Colour</label>
-                        <div class="flex flex-wrap items-center gap-2">
-                            <button
-                                v-for="swatch in templates[form.template]?.palettes ?? []"
-                                :key="swatch"
-                                type="button"
-                                class="h-8 w-8 rounded-full border-2"
-                                :class="form.color === swatch ? 'border-foreground' : 'border-transparent'"
-                                :style="{ backgroundColor: swatch }"
-                                :aria-label="`Use colour ${swatch}`"
-                                @click="form.color = swatch"
-                            />
-                            <input
-                                v-model="form.color"
-                                type="color"
-                                class="h-8 w-10 cursor-pointer rounded border"
-                                aria-label="Custom colour"
-                            />
-                        </div>
-                    </div>
-                </div>
-            </section>
+            <SectionOrder v-model="form.content.settings.section_order" />
 
             <PhotoSection
                 v-if="templates[form.template]?.photo"
                 :resume-id="resume.id"
                 :photo-url="resume.photo_url"
-                :initials="(form.content.personal.full_name || 'CV').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()"
+                :photo-original-url="resume.photo_original_url"
+                :initials="
+                    (form.content.personal.full_name || 'CV')
+                        .split(' ')
+                        .map((w) => w[0])
+                        .slice(0, 2)
+                        .join('')
+                        .toUpperCase()
+                "
             />
 
-            <PersonalSection v-model="form.content.personal" />
-            <ExperienceSection v-model="form.content.experience" />
-            <LevelSection
-                v-model="form.content.skills"
-                title="Skills"
-                placeholder="e.g. Laravel"
-            />
-            <LevelSection
-                v-model="form.content.tools"
-                title="Software / Tools"
-                placeholder="e.g. VS Code"
-            />
-            <LevelSection
-                v-model="form.content.languages"
-                title="Languages"
-                placeholder="e.g. English"
-            />
+            <ContentSections v-model="form.content" />
         </form>
 
         <div class="hidden lg:block">
             <div class="sticky top-4">
                 <ResumePreview
-                    :resume-id="resume.id"
+                    :url="preview(resume.id).url"
                     :template="form.template"
                     :color="form.color"
                     :content="form.content"

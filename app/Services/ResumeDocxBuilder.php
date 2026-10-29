@@ -18,15 +18,14 @@ class ResumeDocxBuilder
     {
         Settings::setOutputEscapingEnabled(true);
 
-        $defaults = Resume::defaultData();
-        $data = array_replace($defaults, (array) $resume->data);
-        $p = array_replace($defaults['personal'], (array) ($data['personal'] ?? []));
+        $data = Resume::withDefaults($resume->data);
+        $p = $data['personal'];
 
         $this->color = preg_match('/^#[0-9a-fA-F]{6}$/', (string) $resume->color)
             ? ltrim($resume->color, '#')
             : '0F766E';
 
-        $word = new PhpWord();
+        $word = new PhpWord;
         $word->setDefaultFontName('Calibri');
         $word->setDefaultFontSize(10);
 
@@ -41,20 +40,23 @@ class ResumeDocxBuilder
 
         if (trim((string) $p['summary']) !== '') {
             $this->heading($section, 'Summary');
-            $section->addText((string) $p['summary']);
+            $this->paragraphs($section, $p['summary']);
         }
 
-        $this->experience($section, F::filled($data['experience'], 'job_title', 'company'));
-        $this->education($section, F::filled($data['education'], 'degree', 'institution'));
-        $this->projects($section, F::filled($data['projects'], 'name'));
-
-        $this->inlineList($section, 'Skills', array_column(F::filled($data['skills'], 'name'), 'name'));
-        $this->inlineList($section, 'Software & Tools', array_column(F::filled($data['tools'], 'name'), 'name'));
-        $this->inlineList($section, 'Languages', array_column(F::filled($data['languages'], 'name'), 'name'));
-        $this->inlineList($section, 'Hobbies', F::strings($data['hobbies']));
-
-        $this->certifications($section, F::filled($data['certifications'], 'name'));
-        $this->references($section, F::filled($data['references'], 'name'));
+        // One column, so the user's section order applies as is.
+        foreach (F::sectionOrder($data) as $key) {
+            match ($key) {
+                'experience' => $this->experience($section, F::filled($data['experience'], 'job_title', 'company')),
+                'education' => $this->education($section, F::filled($data['education'], 'degree', 'institution')),
+                'projects' => $this->projects($section, F::filled($data['projects'], 'name')),
+                'skills' => $this->inlineList($section, 'Skills', array_column(F::filled($data['skills'], 'name'), 'name')),
+                'tools' => $this->inlineList($section, 'Software & Tools', array_column(F::filled($data['tools'], 'name'), 'name')),
+                'languages' => $this->inlineList($section, 'Languages', array_column(F::filled($data['languages'], 'name'), 'name')),
+                'hobbies' => $this->inlineList($section, 'Hobbies', F::strings($data['hobbies'])),
+                'certifications' => $this->certifications($section, F::filled($data['certifications'], 'name')),
+                'references' => $this->references($section, F::filled($data['references'], 'name')),
+            };
+        }
 
         $path = tempnam(sys_get_temp_dir(), 'resume_');
         IOFactory::createWriter($word, 'Word2007')->save($path);
@@ -78,7 +80,7 @@ class ResumeDocxBuilder
             );
         }
 
-        $contacts = F::strings([$p['phone'], $p['email'], $p['location'], $p['website'], $p['linkedin']]);
+        $contacts = F::strings([$p['phone'], $p['email'], $p['location'], $p['website'], $p['linkedin'], $p['github']]);
 
         if ($contacts) {
             $section->addText(implode('  |  ', $contacts), ['size' => 9, 'color' => '4B5563']);
@@ -108,6 +110,21 @@ class ResumeDocxBuilder
     {
         if (trim($text) !== '') {
             $section->addText($text, ['size' => 9, 'color' => '6B7280'], ['spaceAfter' => 40]);
+        }
+    }
+
+    /**
+     * Free text with the user's line breaks kept. Word ignores raw newlines in addText(),
+     * so each line is its own paragraph, tight within a block and spaced between blocks.
+     */
+    private function paragraphs(Section $section, ?string $text): void
+    {
+        foreach (F::paragraphs($text) as $paragraph) {
+            foreach ($paragraph as $i => $line) {
+                $last = $i === count($paragraph) - 1;
+
+                $section->addText($line, null, ['spaceAfter' => $last ? Converter::pointToTwip(6) : 0]);
+            }
         }
     }
 
@@ -184,7 +201,7 @@ class ResumeDocxBuilder
 
         foreach ($items as $cert) {
             $this->itemTitle($section, (string) $cert['name']);
-            $this->meta($section, $this->joinParts(' · ', $cert['issuer'] ?? '', $cert['date'] ?? ''));
+            $this->meta($section, $this->joinParts(' · ', $cert['issuer'] ?? '', F::month($cert['date'] ?? null)));
         }
     }
 

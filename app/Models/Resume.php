@@ -14,6 +14,7 @@ class Resume extends Model
         'color',
         'data',
         'photo_path',
+        'photo_original_path',
     ];
 
     protected function casts(): array
@@ -37,17 +38,23 @@ class Resume extends Model
         });
 
         static::deleted(function (Resume $resume) {
-            if ($resume->photo_path) {
-                Storage::disk('local')->delete($resume->photo_path);
-            }
+            Storage::disk('local')->delete(array_filter([$resume->photo_path, $resume->photo_original_path]));
         });
     }
+
+    /**
+     * Sections the user can reorder, in their default order. Personal details
+     * and the summary always come first.
+     */
+    public const SECTIONS = [
+        'experience', 'education', 'skills', 'tools', 'projects',
+        'certifications', 'languages', 'hobbies', 'references',
+    ];
 
     public static function defaultData(): array
     {
         return [
-            'personal' =>
-            [
+            'personal' => [
                 'full_name' => '',
                 'job_title' => '',
                 'email' => '',
@@ -55,6 +62,7 @@ class Resume extends Model
                 'location' => '',
                 'website' => '',
                 'linkedin' => '',
+                'github' => '',
                 'summary' => '',
             ],
             'experience' => [],
@@ -66,6 +74,33 @@ class Resume extends Model
             'certifications' => [],
             'hobbies' => [],
             'references' => [],
+            'settings' => [
+                // Show the 1–5 rating next to each item, per rated section.
+                'show_levels' => [
+                    'skills' => true,
+                    'tools' => true,
+                    'languages' => true,
+                ],
+                'section_order' => self::SECTIONS,
+            ],
         ];
+    }
+
+    /**
+     * Saved (or half-typed) data with any missing keys filled from defaultData(),
+     * so resumes saved before a field existed still render.
+     */
+    public static function withDefaults(mixed $data): array
+    {
+        $defaults = self::defaultData();
+        $data = array_replace($defaults, (array) $data);
+
+        $data['personal'] = array_replace($defaults['personal'], (array) $data['personal']);
+        // Not array_replace_recursive: that would merge section_order by index.
+        $settings = array_replace($defaults['settings'], (array) $data['settings']);
+        $settings['show_levels'] = array_replace($defaults['settings']['show_levels'], (array) $settings['show_levels']);
+        $data['settings'] = $settings;
+
+        return $data;
     }
 }
