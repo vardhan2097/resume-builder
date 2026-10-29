@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Exceptions\CvHasNoText;
+use App\Models\Resume;
 use App\Services\CvParser;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -10,12 +11,16 @@ use Illuminate\Validation\ValidationException;
 /**
  * Validates an uploaded CV and parses it into resume data. The upload is only
  * read from PHP's temp file; nothing is stored.
+ *
+ * @phpstan-import-type ResumeData from Resume
  */
 class ParseUploadedCv
 {
     public function __construct(private CvParser $parser) {}
 
     /**
+     * @return ResumeData
+     *
      * @throws ValidationException
      */
     public function __invoke(Request $request): array

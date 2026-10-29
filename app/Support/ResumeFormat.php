@@ -5,6 +5,9 @@ namespace App\Support;
 use App\Models\Resume;
 use Carbon\Carbon;
 
+/**
+ * @phpstan-import-type ResumeData from Resume
+ */
 class ResumeFormat
 {
     public static function month(?string $yearMonth): string
@@ -32,9 +35,14 @@ class ResumeFormat
         return $from ?: $to;
     }
 
+    /**
+     * Non-empty, trimmed lines of a free-text field.
+     *
+     * @return list<string>
+     */
     public static function lines(?string $text): array
     {
-        $lines = preg_split('/\R/', (string) $text);
+        $lines = preg_split('/\R/', (string) $text) ?: [];
 
         return array_values(array_filter(array_map('trim', $lines)));
     }
@@ -47,13 +55,15 @@ class ResumeFormat
      */
     public static function paragraphs(?string $text): array
     {
-        $blocks = preg_split('/\R\s*\R/', trim((string) $text));
+        $blocks = preg_split('/\R\s*\R/', trim((string) $text)) ?: [];
 
         return array_values(array_filter(array_map(self::lines(...), $blocks)));
     }
 
     /**
      * Whether a rated section (skills, tools, languages) should show its 1–5 levels.
+     *
+     * @param  ResumeData  $data
      */
     public static function showLevels(array $data, string $section): bool
     {
@@ -65,20 +75,35 @@ class ResumeFormat
      * template shows). Unknown or repeated keys are dropped and any section missing
      * from the saved order is appended in its default position.
      *
+     * @param  array<string, mixed>  $data  resume data, defaulted or raw
      * @param  list<string>|null  $only
-     * @return list<string>
+     * @return list<value-of<Resume::SECTIONS>>
      */
     public static function sectionOrder(array $data, ?array $only = null): array
     {
-        $saved = array_filter((array) ($data['settings']['section_order'] ?? []), 'is_string');
-        $order = array_values(array_unique([
-            ...array_intersect($saved, Resume::SECTIONS),
-            ...Resume::SECTIONS,
-        ]));
+        // Rank each section by its first position in the saved order; unsaved ones
+        // rank last and, since usort is stable, keep their default order.
+        $saved = $data['settings']['section_order'] ?? [];
+        $rank = [];
+        foreach (is_array($saved) ? array_values($saved) : [] as $i => $key) {
+            if (is_string($key)) {
+                $rank[$key] ??= $i;
+            }
+        }
+
+        $order = Resume::SECTIONS;
+        usort($order, fn (string $a, string $b) => ($rank[$a] ?? PHP_INT_MAX) <=> ($rank[$b] ?? PHP_INT_MAX));
 
         return $only === null ? $order : array_values(array_intersect($order, $only));
     }
 
+    /**
+     * Items where at least one of $keys has a non-blank value.
+     *
+     * Accepts any value so a missing or null section still renders as empty.
+     *
+     * @return list<array<string, mixed>>
+     */
     public static function filled(mixed $items, string ...$keys): array
     {
         return array_values(array_filter((array) $items, function ($item) use ($keys) {
@@ -92,6 +117,11 @@ class ResumeFormat
         }));
     }
 
+    /**
+     * Trimmed, non-empty strings from a list of scalars.
+     *
+     * @return list<string>
+     */
     public static function strings(mixed $items): array
     {
         return array_values(array_filter(array_map(
@@ -102,7 +132,7 @@ class ResumeFormat
 
     public static function initials(?string $name): string
     {
-        $words = preg_split('/\s+/', trim((string) $name), -1, PREG_SPLIT_NO_EMPTY);
+        $words = preg_split('/\s+/', trim((string) $name), -1, PREG_SPLIT_NO_EMPTY) ?: [];
         $letters = array_map(fn ($word) => mb_substr($word, 0, 1), array_slice($words, 0, 2));
 
         return mb_strtoupper(implode('', $letters)) ?: 'CV';
@@ -112,6 +142,7 @@ class ResumeFormat
      * Everything a template needs, filtered so empty entries are skipped:
      * `@php(extract(F::prepare($data)))` at the top of a template.
      *
+     * @param  ResumeData  $data
      * @return array<string, mixed>
      */
     public static function prepare(array $data): array
@@ -134,6 +165,7 @@ class ResumeFormat
     /**
      * Filled contact details as [type, value, label], in display order.
      *
+     * @param  array<string, string>  $personal
      * @return list<array{0: string, 1: string, 2: string}>
      */
     public static function contacts(array $personal): array
@@ -241,6 +273,8 @@ class ResumeFormat
     /**
      * @font-face rules for the given families. The PDF reads the files from disk
      * (DomPDF has remote loading off); the browser preview loads them by URL.
+     *
+     * @param  list<string>  $families  keys of FONTS
      */
     public static function fontFaces(array $families, bool $pdf): string
     {
@@ -273,6 +307,7 @@ class ResumeFormat
      * One experience / education / project item in a common shape, so the shared
      * entry markup can show any of them.
      *
+     * @param  array<string, mixed>  $item
      * @return array{title: string, org: string, date: string, place: string, extra: string, lines: list<string>}
      */
     public static function entry(string $kind, array $item): array
@@ -311,6 +346,8 @@ class ResumeFormat
      * pages, so this estimates height in text lines (roughly; it errs on the
      * generous side) and moves everything from the first section that doesn't fit.
      *
+     * @param  ResumeData  $data
+     * @param  array<string, mixed>  $prepared  the result of prepare()
      * @param  list<string>  $sections  sidebar sections in the user's order
      * @param  int  $capacity  lines available below whatever else the sidebar holds
      * @param  int  $charsPerLine  roughly how many characters fit on one line
@@ -321,7 +358,7 @@ class ResumeFormat
         $wrap = fn (string $text) => max(1, (int) ceil(mb_strlen($text) / max(1, $charsPerLine)));
         $used = 0;
 
-        foreach (array_values($sections) as $i => $section) {
+        foreach ($sections as $i => $section) {
             $items = $prepared[$section] ?? [];
 
             if (! count($items)) {

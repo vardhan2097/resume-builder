@@ -105,10 +105,10 @@ class ResumeRules
             return $rules;
         }
 
-        return array_map(fn (array $field) => array_values(array_map(
+        return array_map(fn (array $field) => array_map(
             fn (string $rule) => in_array($rule, ['email', 'url'], true) || str_starts_with($rule, 'regex:') ? 'string' : $rule,
             $field,
-        )), $rules);
+        ), $rules);
     }
 
     /**

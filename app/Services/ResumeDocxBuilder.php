@@ -64,6 +64,9 @@ class ResumeDocxBuilder
         return $path;
     }
 
+    /**
+     * @param  array<string, string>  $p
+     */
     private function header(Section $section, array $p): void
     {
         $section->addText(
@@ -140,6 +143,9 @@ class ResumeDocxBuilder
         return implode($separator, F::strings($parts));
     }
 
+    /**
+     * @param  list<array<string, mixed>>  $items  from F::filled()
+     */
     private function experience(Section $section, array $items): void
     {
         if (! $items) {
@@ -158,6 +164,9 @@ class ResumeDocxBuilder
         }
     }
 
+    /**
+     * @param  list<array<string, mixed>>  $items  from F::filled()
+     */
     private function education(Section $section, array $items): void
     {
         if (! $items) {
@@ -176,6 +185,9 @@ class ResumeDocxBuilder
         }
     }
 
+    /**
+     * @param  list<array<string, mixed>>  $items  from F::filled()
+     */
     private function projects(Section $section, array $items): void
     {
         if (! $items) {
@@ -191,6 +203,9 @@ class ResumeDocxBuilder
         }
     }
 
+    /**
+     * @param  list<array<string, mixed>>  $items  from F::filled()
+     */
     private function certifications(Section $section, array $items): void
     {
         if (! $items) {
@@ -205,6 +220,9 @@ class ResumeDocxBuilder
         }
     }
 
+    /**
+     * @param  list<array<string, mixed>>  $items  from F::filled()
+     */
     private function references(Section $section, array $items): void
     {
         if (! $items) {
@@ -220,6 +238,9 @@ class ResumeDocxBuilder
         }
     }
 
+    /**
+     * @param  list<mixed>  $names  raw names; blanks are dropped
+     */
     private function inlineList(Section $section, string $title, array $names): void
     {
         $names = F::strings($names);
