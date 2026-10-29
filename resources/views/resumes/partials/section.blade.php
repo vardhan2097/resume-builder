@@ -2,7 +2,7 @@
     Body of one resume section (no heading), shared by templates and styled by
     each template's CSS. Expects: $section, $data (full data), $s (F::prepare())
     and optional $opts:
-      levels: bars | dots | percent | segments   (how 1–5 ratings look)
+      levels: bars | dots | percent | segments | chips   (how 1–5 ratings look)
       plain:  tags | list | inline               (rated sections with ratings off, and hobbies)
       orgFirst: bool                             (company/school before role/degree)
       color: accent colour for dots/bars drawn as text

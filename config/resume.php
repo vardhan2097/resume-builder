@@ -25,5 +25,10 @@ return [
             'photo' => true,
             'palettes' => ['#1f3a5f', '#334155', '#0f766e', '#4c1d95', '#7c2d12', '#9f1239'],
         ],
+        'banner' => [
+            'name' => 'Banner',
+            'photo' => true,
+            'palettes' => ['#4338ca', '#1e3a8a', '#0f766e', '#7c3aed', '#be123c', '#334155'],
+        ],
     ],
 ];

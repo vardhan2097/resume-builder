@@ -1,7 +1,12 @@
-{{-- Rated items (1–5). Style per $opts['levels']. --}}
+{{-- Rated items (1–5). Style per $opts['levels']; chips wrap inline like unrated tags. --}}
+@if ($opts['levels'] === 'chips')<div class="tags">@endif
 @foreach ($items as $item)
     @php($level = max(1, min(5, (int) $item['level'])))
     @switch($opts['levels'])
+        @case('chips')
+            <span class="tag tag-lvl">{{ $item['name'] }} <span class="chip-dots">@for ($i = 1; $i <= 5; $i++)<span class="{{ $i <= $level ? 'dot dot-on' : 'dot dot-off' }}"></span>@endfor</span></span>
+            @break
+
         @case('dots')
             <table class="lvl-row"><tr>
                 <td class="lvl-name">{{ $item['name'] }}</td>
@@ -35,3 +40,4 @@
             </div>
     @endswitch
 @endforeach
+@if ($opts['levels'] === 'chips')</div>@endif

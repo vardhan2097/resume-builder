@@ -119,3 +119,12 @@ test('executive moves sidebar sections that do not fit page one into the main co
         ->and($side)->not->toContain('Estelle Darcy')
         ->and($main)->toContain('Estelle Darcy');
 });
+
+test('banner shows rated skills as chips with dots', function () {
+    $html = app(ResumeRenderer::class)->render('banner', '#0f766e', fullResumeData());
+
+    preg_match('#<span class="tag tag-lvl">Branding .*?</span></span>#s', $html, $chip);
+
+    expect($chip)->not->toBeEmpty()
+        ->and(substr_count($chip[0], 'dot dot-on'))->toBe(4);
+});
