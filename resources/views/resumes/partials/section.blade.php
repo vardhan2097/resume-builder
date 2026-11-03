@@ -31,7 +31,7 @@
 
     @case('certifications')
         @foreach ($s['certifications'] as $cert)
-            <div class="lite">
+            <div class="lite" data-page-break="{{ !empty($cert['page_break_before']) ? 1 : 0 }}">
                 <div class="lite-title">{{ $cert['name'] }}</div>
                 @if (count(\App\Support\ResumeFormat::strings([$cert['issuer'] ?? '', \App\Support\ResumeFormat::month($cert['date'] ?? null)])))
                     <div class="lite-meta">{{ implode(' · ', \App\Support\ResumeFormat::strings([$cert['issuer'] ?? '', \App\Support\ResumeFormat::month($cert['date'] ?? null)])) }}</div>
@@ -42,7 +42,7 @@
 
     @case('references')
         @foreach ($s['references'] as $ref)
-            <div class="lite">
+            <div class="lite" data-page-break="{{ !empty($ref['page_break_before']) ? 1 : 0 }}">
                 <div class="lite-title">{{ $ref['name'] }}</div>
                 @if (count(\App\Support\ResumeFormat::strings([$ref['position'] ?? '', $ref['company'] ?? ''])))
                     <div class="lite-meta">{{ implode(', ', \App\Support\ResumeFormat::strings([$ref['position'] ?? '', $ref['company'] ?? ''])) }}</div>

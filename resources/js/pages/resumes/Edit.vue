@@ -136,8 +136,13 @@ function download(kind: 'pdf' | 'docx') {
 <template>
     <Head :title="form.title || 'Edit resume'" />
 
-    <div class="grid gap-6 p-4 lg:grid-cols-2">
-        <form class="flex flex-col gap-6" @submit.prevent="save()">
+    <div
+        class="grid gap-6 p-4 lg:h-[calc(100dvh-5rem)] lg:min-h-0 lg:grid-cols-2 lg:overflow-hidden"
+    >
+        <form
+            class="flex flex-col gap-6 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-2"
+            @submit.prevent="save()"
+        >
             <div
                 class="sticky top-0 z-10 flex items-center gap-3 rounded-xl border bg-background p-3"
             >
@@ -207,7 +212,10 @@ function download(kind: 'pdf' | 'docx') {
                 :templates="templates"
             />
 
-            <SectionOrder v-model="form.content.settings.section_order" />
+            <SectionOrder
+                v-model="form.content.settings.section_order"
+                v-model:page-breaks="form.content.settings.page_break_before"
+            />
 
             <PhotoSection
                 v-if="templates[form.template]?.photo"
@@ -227,8 +235,13 @@ function download(kind: 'pdf' | 'docx') {
             <ContentSections v-model="form.content" />
         </form>
 
-        <div class="hidden lg:block">
-            <div class="sticky top-4">
+        <div
+            class="hidden lg:block lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain"
+            tabindex="0"
+            role="region"
+            aria-label="Resume preview"
+        >
+            <div class="h-full min-h-0">
                 <ResumePreview
                     :url="preview(resume.id).url"
                     :template="form.template"

@@ -104,8 +104,12 @@ function startOver() {
 <template>
     <Head title="Build your resume" />
 
-    <div class="mx-auto grid max-w-7xl gap-6 p-4 lg:grid-cols-2">
-        <div class="flex flex-col gap-6">
+    <div
+        class="mx-auto grid w-full gap-6 p-4 lg:h-[calc(100dvh-5rem)] lg:min-h-0 lg:grid-cols-2 lg:overflow-hidden"
+    >
+        <div
+            class="flex flex-col gap-6 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-2"
+        >
             <div
                 class="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm"
             >
@@ -200,7 +204,10 @@ function startOver() {
                 :templates="templates"
             />
 
-            <SectionOrder v-model="resume.data.settings.section_order" />
+            <SectionOrder
+                v-model="resume.data.settings.section_order"
+                v-model:page-breaks="resume.data.settings.page_break_before"
+            />
 
             <section
                 v-if="templates[resume.template]?.photo"
@@ -226,8 +233,13 @@ function startOver() {
             <ContentSections v-model="resume.data" />
         </div>
 
-        <div class="hidden lg:block">
-            <div class="sticky top-4">
+        <div
+            class="hidden lg:block lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain"
+            tabindex="0"
+            role="region"
+            aria-label="Resume preview"
+        >
+            <div class="h-full min-h-0">
                 <ResumePreview
                     :url="preview().url"
                     :template="resume.template"

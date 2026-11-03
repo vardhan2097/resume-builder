@@ -4,6 +4,7 @@ use App\Models\Resume;
 use App\Models\User;
 use App\Services\ResumeRenderer;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Smalot\PdfParser\Parser;
 
 // Every registered template; read from the config file since datasets are built before the app boots.
 $templates = array_keys((require __DIR__.'/../../config/resume.php')['templates']);
@@ -98,12 +99,11 @@ test('every template hides ratings when asked', function (string $template) {
         ->and($html)->not->toContain('width: 80%');
 })->with($templates);
 
-// Classic still lays its columns out in one table row, which DomPDF can't split; it is reworked separately.
 test('a long resume flows onto a second page without blank pages', function (string $template) {
     $html = app(ResumeRenderer::class)->render($template, '#0f766e', fullResumeData(jobs: 9), pdf: true);
 
     expect(pdfPages($html))->toBe(2);
-})->with(array_values(array_diff($templates, ['classic'])));
+})->with($templates);
 
 test('executive moves sidebar sections that do not fit page one into the main column', function () {
     $data = fullResumeData();
@@ -128,3 +128,107 @@ test('banner shows rated skills as chips with dots', function () {
     expect($chip)->not->toBeEmpty()
         ->and(substr_count($chip[0], 'dot dot-on'))->toBe(4);
 });
+
+test('every template keeps the summary in preview and downloaded pdf', function (string $template) {
+    $data = fullResumeData();
+    $data['personal']['summary'] = "Builds reliable applications.\nWorks with growing teams.\n\nAvailable for new opportunities.";
+    $renderer = app(ResumeRenderer::class);
+
+    foreach ([false, true] as $forPdf) {
+        $html = $renderer->render($template, '#0f766e', $data, pdf: $forPdf);
+        expect($html)->toContain('Builds reliable applications.', 'Works with growing teams.', 'Available for new opportunities.');
+    }
+
+    $pdf = Pdf::loadHTML($renderer->render($template, '#0f766e', $data, pdf: true))
+        ->setPaper('a4')->setOption('isRemoteEnabled', false)->output();
+    $text = (new Parser)->parseContent($pdf)->getText();
+
+    expect($text)->toContain('Builds reliable applications.', 'Works with growing teams.', 'Available for new opportunities.');
+})->with($templates);
+
+test('classic starts content below the header and has no empty continuation pages', function () {
+    $html = app(ResumeRenderer::class)->render('classic', '#0f766e', fullResumeData(jobs: 9), pdf: true);
+    $pdf = Pdf::loadHTML($html)->setPaper('a4')->setOption('isRemoteEnabled', false)->output();
+    $pages = (new Parser)->parseContent($pdf)->getPages();
+
+    expect($pages)->toHaveCount(2)
+        ->and($pages[0]->getText())->toContain('Richard Sanchez', 'Borcelle 1');
+
+    foreach ($pages as $page) {
+        expect(trim($page->getText()))->not->toBeEmpty();
+    }
+});
+
+test('classic keeps oversized sidebar content in the left column across pages', function () {
+    $data = fullResumeData();
+    for ($i = 1; $i <= 40; $i++) {
+        $data['skills'][] = ['id' => "extra{$i}", 'name' => "Additional skill {$i}", 'level' => 3];
+    }
+
+    $html = app(ResumeRenderer::class)->render('classic', '#0f766e', $data, pdf: true);
+    $pdf = Pdf::loadHTML($html)->setPaper('a4')->setOption('isRemoteEnabled', false)->output();
+    $document = (new Parser)->parseContent($pdf);
+    expect($document->getText())->toContain('Additional skill 40', 'Goa University', 'Google Ads', 'Chess');
+
+    $found = [];
+    foreach ($document->getPages() as $page) {
+        foreach ($page->getDataTm() as [$matrix, $text]) {
+            foreach (['Additional skill 40', 'Google Ads', 'Konkani', 'Chess'] as $label) {
+                if (str_contains($text, $label)) {
+                    expect((float) $matrix[4])->toBeLessThan(190)
+                        ->and((float) $matrix[5])->toBeGreaterThan(20)
+                        ->and((float) $matrix[5])->toBeLessThan(822);
+                    $found[$label] = true;
+                }
+            }
+        }
+    }
+    expect(array_keys($found))->toContain('Additional skill 40', 'Google Ads', 'Konkani', 'Chess');
+});
+
+test('manual entry breaks start the selected company on a new page', function (string $template) {
+    $data = fullResumeData();
+    $data['experience'][1]['page_break_before'] = true;
+    $html = app(ResumeRenderer::class)->render($template, '#0f766e', $data, pdf: true);
+    $pdf = Pdf::loadHTML($html)->setPaper('a4')->setOption('isRemoteEnabled', false)->output();
+    $pages = (new Parser)->parseContent($pdf)->getPages();
+
+    expect($pages)->toHaveCount(2)
+        ->and($pages[0]->getText())->toContain('Borcelle 1')->not->toContain('Borcelle 2')
+        ->and($pages[1]->getText())->toContain('Borcelle 2');
+})->with($templates);
+
+test('manual section breaks start projects on a new page', function (string $template) {
+    $data = fullResumeData();
+    $data['settings']['page_break_before'] = ['projects'];
+    $html = app(ResumeRenderer::class)->render($template, '#0f766e', $data, pdf: true);
+    $pdf = Pdf::loadHTML($html)->setPaper('a4')->setOption('isRemoteEnabled', false)->output();
+    $pages = (new Parser)->parseContent($pdf)->getPages();
+
+    expect($pages)->toHaveCount(2)
+        ->and($pages[0]->getText())->not->toContain('Brand Refresh')
+        ->and($pages[1]->getText())->toContain('Brand Refresh');
+})->with($templates);
+
+test('short education entries keep the degree and institution on the same page', function (string $template) {
+    $data = fullResumeData(jobs: 6);
+    $data['education'] = [];
+    for ($i = 0; $i < 10; $i++) {
+        $data['education'][] = ['id' => "degree{$i}", 'degree' => "Course Number {$i}", 'institution' => "School Number {$i}",
+            'start_date' => '2015-01', 'end_date' => '2017-01', 'score' => '', 'location' => '', 'description' => "Studied computer science.\nCompleted practical coursework.\nWorked on team assignments."];
+    }
+    $html = app(ResumeRenderer::class)->render($template, '#0f766e', $data, pdf: true);
+    $pdf = Pdf::loadHTML($html)->setPaper('a4')->setOption('isRemoteEnabled', false)->output();
+    $pages = (new Parser)->parseContent($pdf)->getPages();
+    $found = [];
+    foreach ($pages as $page) {
+        $text = $page->getText();
+        for ($i = 0; $i < 10; $i++) {
+            if (str_contains($text, "Course Number {$i}")) {
+                expect($text)->toContain("School Number {$i}");
+                $found[] = $i;
+            }
+        }
+    }
+    expect($found)->toHaveCount(10);
+})->with($templates);

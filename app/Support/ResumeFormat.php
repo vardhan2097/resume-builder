@@ -382,7 +382,9 @@ class ResumeFormat
                 };
             }
 
-            if ($used + $lines > $capacity) {
+            if (in_array($section, $data['settings']['page_break_before'] ?? [], true)
+                || count(array_filter($items, fn ($item) => is_array($item) && ! empty($item['page_break_before']))) > 0
+                || $used + $lines > $capacity) {
                 return [array_slice($sections, 0, $i), array_slice($sections, $i)];
             }
 

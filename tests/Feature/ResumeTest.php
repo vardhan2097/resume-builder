@@ -7,6 +7,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\PhpWord;
+use Smalot\PdfParser\Parser;
 
 test('guests are redirected to login', function () {
     $this->get(route('resumes.index'))->assertRedirect(route('login'));
@@ -602,7 +603,7 @@ test('classic template puts education and certifications in the sidebar and foll
     $data = orderedResumeData(['projects', 'tools', 'certifications', 'experience', 'skills', 'education']);
 
     $html = app(ResumeRenderer::class)->render('classic', '#0f766e', $data);
-    [$sidebar, $main] = explode('<td class="main">', $html);
+    [$sidebar, $main] = explode('<div class="main">', $html);
 
     expect($sidebar)->toContain('Goa University', 'AWS SA')
         ->and($main)->not->toContain('Goa University')
@@ -627,4 +628,31 @@ test('docx follows the section order', function () {
 
     expect(strpos($xml, 'EDUCATION'))->toBeLessThan(strpos($xml, 'PROJECTS'))
         ->and(strpos($xml, 'PROJECTS'))->toBeLessThan(strpos($xml, 'EMPLOYMENT HISTORY'));
+});
+
+test('pdf preview uses unsaved content and enforces ownership', function () {
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create(['title' => 'Saved title']);
+    $data = Resume::defaultData();
+    $data['personal']['full_name'] = 'Unsaved Preview Name';
+    $payload = ['template' => 'banner', 'color' => '#0f766e', 'data' => $data, 'format' => 'pdf'];
+    $response = $this->actingAs($user)->postJson(route('resumes.preview', $resume), $payload)
+        ->assertOk()->assertHeader('Content-Type', 'application/pdf')->assertHeader('X-PDF-Pages', '1');
+    expect((new Parser)->parseContent($response->getContent())->getText())->toContain('UNSAVED PREVIEW NAME')
+        ->and($resume->fresh()->data['personal']['full_name'])->toBe('');
+    $this->actingAs(User::factory()->create())->postJson(route('resumes.preview', $resume), $payload)->assertForbidden();
+});
+
+test('manual page breaks are saved and validated', function () {
+    $user = User::factory()->create();
+    $resume = $user->resumes()->create([]);
+    $data = Resume::defaultData();
+    $data['experience'][] = ['id' => 'job1', 'job_title' => 'Developer', 'page_break_before' => true];
+    $data['settings']['page_break_before'] = ['education'];
+    $payload = ['title' => 'Page controls', 'template' => 'classic', 'color' => '#0f766e', 'data' => $data];
+    $this->actingAs($user)->put(route('resumes.update', $resume), $payload)->assertSessionHasNoErrors();
+    expect($resume->fresh()->data['experience'][0]['page_break_before'])->toBeTrue()
+        ->and($resume->fresh()->data['settings']['page_break_before'])->toBe(['education']);
+    $payload['data']['settings']['page_break_before'] = ['unknown'];
+    $this->putJson(route('resumes.update', $resume), $payload)->assertUnprocessable();
 });

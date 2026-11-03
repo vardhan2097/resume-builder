@@ -6,7 +6,7 @@
             ? [$e['org'], $e['title']]
             : [$e['title'] ?: $e['org'], $e['title'] !== '' ? $e['org'] : ''];
     @endphp
-    <div class="entry">
+    <div class="entry" data-page-break="{{ !empty($item['page_break_before']) ? 1 : 0 }}">
         <table class="entry-head"><tr>
             <td class="entry-title">{{ $main }}</td>
             @if ($e['date'] !== '')

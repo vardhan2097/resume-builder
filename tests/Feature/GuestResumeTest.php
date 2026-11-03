@@ -161,3 +161,15 @@ test('claim validates the resume', function () {
 
     expect(Resume::count())->toBe(0);
 });
+
+test('guest preview can return an actual pdf and its page count without saving a resume', function () {
+    $data = Resume::defaultData();
+    $data['personal']['full_name'] = 'Preview Person';
+    $data['personal']['email'] = 'half-typed@';
+    $response = $this->postJson(route('build.preview'), [
+        'template' => 'banner', 'color' => '#0f766e', 'data' => $data, 'format' => 'pdf',
+    ])->assertOk()->assertHeader('Content-Type', 'application/pdf')->assertHeader('X-PDF-Pages', '1');
+
+    expect($response->getContent())->toStartWith('%PDF-');
+    $this->assertDatabaseCount('resumes', 0);
+});

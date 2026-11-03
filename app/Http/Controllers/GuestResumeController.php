@@ -43,6 +43,10 @@ class GuestResumeController extends Controller
     {
         $validated = $request->validate(ResumeRules::content(strict: false));
 
+        if ($request->input('format') === 'pdf') {
+            return $renderer->pdfPreview($validated['template'], $validated['color'], $validated['data']);
+        }
+
         return response($renderer->render($validated['template'], $validated['color'], $validated['data']));
     }
 

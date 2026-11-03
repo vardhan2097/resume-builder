@@ -3,12 +3,28 @@
 namespace App\Services;
 
 use App\Models\Resume;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\Factory as ViewFactory;
 
 class ResumeRenderer
 {
     public function __construct(private ViewFactory $views) {}
+
+    public function pdfPreview(?string $template, ?string $color, mixed $data, ?string $photoPath = null): Response
+    {
+        $pdf = Pdf::loadHTML($this->render($template, $color, $data, pdf: true, photoPath: $photoPath))
+            ->setPaper('a4')->setOption('isRemoteEnabled', false);
+        $bytes = $pdf->output();
+
+        return response($bytes, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="resume-preview.pdf"',
+            'Cache-Control' => 'private, no-store',
+            'X-PDF-Pages' => (string) $pdf->getDomPDF()->getCanvas()->get_page_count(),
+        ]);
+    }
 
     public function render(
         ?string $template,
@@ -39,11 +55,15 @@ class ResumeRenderer
         // so resolve its file explicitly; the finder throws if the file is missing.
         $file = $this->views->getFinder()->find("resumes.templates.{$template}");
 
-        return $this->views->file($file, [
+        $html = $this->views->file($file, [
             'color' => $color,
             'data' => $data,
             'pdf' => $pdf,
             'photo' => $photo,
         ])->render();
+
+        return $pdf && $template === 'classic'
+            ? app(ClassicResumePaginator::class)->paginate($html)
+            : $html;
     }
 }

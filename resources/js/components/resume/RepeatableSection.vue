@@ -1,4 +1,8 @@
-<script setup lang="ts" generic="T extends { id: string }">
+<script
+    setup
+    lang="ts"
+    generic="T extends { id: string; page_break_before?: boolean }"
+>
 import { Button } from '@/components/ui/button';
 
 const props = defineProps<{
@@ -48,6 +52,11 @@ function move(index: number, direction: -1 | 1) {
             class="mb-4 grid gap-4 rounded-lg border p-4 last:mb-0"
         >
             <slot :item="item" :index="index" />
+
+            <label class="flex items-center gap-2 text-sm">
+                <input type="checkbox" v-model="item.page_break_before" />
+                Start this entry on a new PDF page
+            </label>
 
             <div class="flex justify-end gap-2">
                 <Button

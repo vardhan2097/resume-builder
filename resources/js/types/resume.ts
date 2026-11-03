@@ -11,6 +11,7 @@ export type Personal = {
 };
 
 export type ExperienceItem = {
+    page_break_before?: boolean;
     id: string;
     job_title: string;
     company: string;
@@ -22,6 +23,7 @@ export type ExperienceItem = {
 };
 
 export type EducationItem = {
+    page_break_before?: boolean;
     id: string;
     degree: string;
     institution: string;
@@ -39,6 +41,7 @@ export type LevelItem = {
 };
 
 export type ProjectItem = {
+    page_break_before?: boolean;
     id: string;
     name: string;
     duration: string;
@@ -47,6 +50,7 @@ export type ProjectItem = {
 };
 
 export type CertificationItem = {
+    page_break_before?: boolean;
     id: string;
     name: string;
     issuer: string;
@@ -54,6 +58,7 @@ export type CertificationItem = {
 };
 
 export type ReferenceItem = {
+    page_break_before?: boolean;
     id: string;
     name: string;
     position: string;
@@ -92,6 +97,7 @@ export type SectionKey =
     | 'references';
 
 export type ResumeSettings = {
+    page_break_before?: SectionKey[];
     /** Show the rating next to each item, per section. */
     show_levels: Record<LevelSectionKey, boolean>;
     /** Order of the sections on the resume and in the editor. */

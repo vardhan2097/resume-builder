@@ -94,12 +94,18 @@ class ResumeRules
             'data.references.*.email' => ['nullable', 'email', 'max:150'],
 
             // Optional so data saved before settings existed is still accepted.
-            'data.settings' => ['sometimes', 'array:show_levels,section_order'],
+            'data.settings' => ['sometimes', 'array:show_levels,section_order,page_break_before'],
             'data.settings.show_levels' => ['sometimes', 'array:skills,tools,languages'],
             'data.settings.show_levels.*' => ['boolean'],
+            'data.settings.page_break_before' => ['sometimes', 'array', 'max:'.count(Resume::SECTIONS)],
+            'data.settings.page_break_before.*' => ['string', 'distinct', 'in:'.implode(',', Resume::SECTIONS)],
             'data.settings.section_order' => ['sometimes', 'array', 'max:'.count(Resume::SECTIONS)],
             'data.settings.section_order.*' => ['string', 'distinct', 'in:'.implode(',', Resume::SECTIONS)],
         ];
+
+        foreach (['experience', 'education', 'projects', 'certifications', 'references'] as $section) {
+            $rules["data.{$section}.*.page_break_before"] = ['sometimes', 'boolean'];
+        }
 
         if ($strict) {
             return $rules;

@@ -1,5 +1,6 @@
 @use('App\Support\ResumeFormat', 'F')
 @php
+    $sideSections = F::sectionOrder($data, ['skills', 'tools', 'languages', 'education', 'certifications', 'hobbies']);
     $p = $data['personal'];
     $skills = F::filled($data['skills'], 'name');
     $tools = F::filled($data['tools'], 'name');
@@ -37,10 +38,13 @@
         .role { margin: 2px 0 8px; font-size: 13px; font-weight: bold; color: {{ $color }}; }
         .contact span { margin-right: 14px; font-size: 9px; color: #4b5563; }
 
-        .sidebar { width: 31%; padding: 0 16px 0 0; }
-        .main { width: 69%; padding: 0 0 0 16px; border-left: 1px solid #e5e7eb; }
+        /* The browser lays out independent columns; PDF columns are paginated before rendering. */
+        .body { display: grid; grid-template-columns: 31% 69%; margin-top: 10px; }
+        .sidebar { min-width: 0; }
+        .sidebar-inner { padding-right: 16px; }
+        .main { min-width: 0; padding-left: 16px; border-left: 1px solid #e5e7eb; }
 
-        .heading { margin: 18px 0 2px; font-size: 10px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; color: #111827; }
+        .heading { page-break-after: avoid; margin: 18px 0 2px; font-size: 10px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; color: #111827; }
         .rule { width: 28px; height: 2px; background: {{ $color }}; margin-bottom: 8px; }
 
         .level-name { margin-top: 6px; font-size: 9.5px; }
@@ -58,6 +62,8 @@
         .link { text-transform: none; letter-spacing: 0; }
         .item-title { font-size: 11.5px; font-weight: bold; color: #111827; }
         .item-meta { margin: 1px 0 4px; font-size: 8.5px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .entry, .item, .side-item, .lite { page-break-inside: avoid; }
     </style>
 </head>
 <body>
@@ -85,92 +91,14 @@
     </tr>
 </table>
 
-<table style="margin-top: 10px; table-layout: fixed;">
-    <tr>
-        <td class="sidebar">
-            @foreach (F::sectionOrder($data, ['skills', 'tools', 'languages', 'education', 'certifications', 'hobbies']) as $section)
-                @switch($section)
-                    @case('skills')
-                    @case('tools')
-                    @case('languages')
-                        @php($items = ['skills' => $skills, 'tools' => $tools, 'languages' => $languages][$section])
-                        @if (count($items))
-                            <div class="heading">{{ ['skills' => 'Skills', 'tools' => 'Software / Tools', 'languages' => 'Languages'][$section] }}</div>
-                            <div class="rule"></div>
-                            @if (F::showLevels($data, $section))
-                                @foreach ($items as $item)
-                                    <div class="level-name">{{ $item['name'] }}</div>
-                                    <div class="bar">
-                                        <div class="bar-fill" style="width: {{ (int) $item['level'] * 20 }}%;"></div>
-                                    </div>
-                                @endforeach
-                            @else
-                                {{-- No ratings: names wrap as compact tags instead of one per line. --}}
-                                <div class="tags">
-                                    @foreach ($items as $item)
-                                        <span class="tag">{{ $item['name'] }}</span>
-                                    @endforeach
-                                </div>
-                            @endif
-                        @endif
-                        @break
-
-                    @case('education')
-                        @if (count($education))
-                            <div class="heading">Education</div>
-                            <div class="rule"></div>
-                            @foreach ($education as $edu)
-                                <div class="side-item">
-                                    @if ($edu['degree'])
-                                        <div class="side-title">{{ $edu['degree'] }}</div>
-                                    @endif
-                                    @if ($edu['institution'])
-                                        <div class="{{ $edu['degree'] ? '' : 'side-title' }}">{{ $edu['institution'] }}</div>
-                                    @endif
-                                    @if (count(F::strings([F::range($edu['start_date'] ?? null, $edu['end_date'] ?? null), $edu['score'] ?? '', $edu['location'] ?? ''])))
-                                        <div class="side-meta">{{ implode(' · ', F::strings([F::range($edu['start_date'] ?? null, $edu['end_date'] ?? null), $edu['score'] ?? '', $edu['location'] ?? ''])) }}</div>
-                                    @endif
-                                    @if (count(F::lines($edu['description'] ?? '')))
-                                        <ul>
-                                            @foreach (F::lines($edu['description'] ?? '') as $line)
-                                                <li>{{ $line }}</li>
-                                            @endforeach
-                                        </ul>
-                                    @endif
-                                </div>
-                            @endforeach
-                        @endif
-                        @break
-
-                    @case('certifications')
-                        @if (count($certifications))
-                            <div class="heading">Certifications</div>
-                            <div class="rule"></div>
-                            @foreach ($certifications as $cert)
-                                <div class="side-item">
-                                    <div class="side-title">{{ $cert['name'] }}</div>
-                                    @if (count(F::strings([$cert['issuer'] ?? '', F::month($cert['date'] ?? null)])))
-                                        <div class="side-meta">{{ implode(' · ', F::strings([$cert['issuer'] ?? '', F::month($cert['date'] ?? null)])) }}</div>
-                                    @endif
-                                </div>
-                            @endforeach
-                        @endif
-                        @break
-
-                    @case('hobbies')
-                        @if (count($hobbies))
-                            <div class="heading">Hobbies</div>
-                            <div class="rule"></div>
-                            @foreach ($hobbies as $hobby)
-                                <div>{{ $hobby }}</div>
-                            @endforeach
-                        @endif
-                        @break
-                @endswitch
+<div class="body">
+        <div class="sidebar"><div class="sidebar-inner">
+            @foreach ($sideSections as $section)
+                @include('resumes.partials.classic-sidebar-section')
             @endforeach
-        </td>
+        </div></div>
 
-        <td class="main">
+        <div class="main">
             @if ($p['summary'])
                 <div class="heading">Summary</div>
                 <div class="rule"></div>
@@ -181,10 +109,10 @@
                 @switch($section)
                     @case('experience')
                         @if (count($experience))
-                            <div class="heading">Employment History</div>
+                            <div class="heading" data-page-break="{{ in_array('experience', $data['settings']['page_break_before'] ?? []) ? 1 : 0 }}">Employment History</div>
                             <div class="rule"></div>
                             @foreach ($experience as $job)
-                                <div class="item">
+                                <div class="item" data-page-break="{{ !empty($job['page_break_before']) ? 1 : 0 }}">
                                     <div class="item-title">
                                         {{ $job['job_title'] }}@if ($job['job_title'] && $job['company']), @endif{{ $job['company'] }}
                                     </div>
@@ -206,10 +134,10 @@
 
                     @case('projects')
                         @if (count($projects))
-                            <div class="heading">Projects</div>
+                            <div class="heading" data-page-break="{{ in_array('projects', $data['settings']['page_break_before'] ?? []) ? 1 : 0 }}">Projects</div>
                             <div class="rule"></div>
                             @foreach ($projects as $project)
-                                <div class="item">
+                                <div class="item" data-page-break="{{ !empty($project['page_break_before']) ? 1 : 0 }}">
                                     <div class="item-title">{{ $project['name'] }}</div>
                                     @if (! empty($project['duration']) || ! empty($project['link']))
                                         <div class="item-meta">
@@ -231,10 +159,10 @@
 
                     @case('references')
                         @if (count($references))
-                            <div class="heading">References</div>
+                            <div class="heading" data-page-break="{{ in_array('references', $data['settings']['page_break_before'] ?? []) ? 1 : 0 }}">References</div>
                             <div class="rule"></div>
                             @foreach ($references as $ref)
-                                <div class="item">
+                                <div class="item" data-page-break="{{ !empty($ref['page_break_before']) ? 1 : 0 }}">
                                     <div class="item-title">{{ $ref['name'] }}</div>
                                     <div>{{ implode(', ', F::strings([$ref['position'] ?? '', $ref['company'] ?? ''])) }}</div>
                                     <div>{{ implode(' | ', F::strings([$ref['phone'] ?? '', $ref['email'] ?? ''])) }}</div>
@@ -244,9 +172,8 @@
                         @break
                 @endswitch
             @endforeach
-        </td>
-    </tr>
-</table>
+        </div>
+</div>
 
 </body>
 </html>

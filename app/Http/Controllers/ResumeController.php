@@ -98,6 +98,12 @@ class ResumeController extends Controller
     {
         Gate::authorize('update', $resume);
 
+        if ($request->input('format') === 'pdf') {
+            $validated = $request->validate(ResumeRules::content(strict: false));
+
+            return $renderer->pdfPreview($validated['template'], $validated['color'], $validated['data'], $resume->photo_path);
+        }
+
         return response($renderer->render(
             $request->input('template'),
             $request->input('color'),

@@ -62,6 +62,9 @@
         .lite { margin-bottom: 6px; }
         .lite-title { font-weight: bold; color: #111827; }
         .lite-meta { font-size: 8.5px; color: #4b5563; }
+
+        .entry, .item, .side-item, .lite { page-break-inside: avoid; }
+        [data-page-break="1"] { page-break-before: always; }
     </style>
 </head>
 <body>
@@ -99,7 +102,7 @@
 
 @foreach ($sections as $section)
     @if (count($s[$section]))
-        <div class="sh"><img src="{{ F::icon($icons[$section], '#ffffff') }}" class="badge" alt="">{{ $titles[$section] }}</div>
+        <div class="sh" data-page-break="{{ in_array($section, $data['settings']['page_break_before'] ?? []) ? 1 : 0 }}"><img src="{{ F::icon($icons[$section], '#ffffff') }}" class="badge" alt="">{{ $titles[$section] }}</div>
         @include('resumes.partials.section', ['section' => $section, 'opts' => ['levels' => 'chips', 'plain' => 'tags']])
     @endif
 @endforeach

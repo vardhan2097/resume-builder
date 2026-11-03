@@ -5,6 +5,9 @@ import { normaliseSectionOrder, SECTION_LABELS } from '@/lib/sections';
 import type { SectionKey } from '@/types/resume';
 
 const order = defineModel<SectionKey[]>({ required: true });
+const pageBreaks = defineModel<SectionKey[]>('pageBreaks', {
+    default: () => [],
+});
 
 const sections = computed(() => normaliseSectionOrder(order.value));
 
@@ -26,7 +29,7 @@ function move(index: number, direction: -1 | 1) {
         <h2 class="text-lg font-semibold">Section order</h2>
         <p class="mb-4 text-sm text-muted-foreground">
             Move sections up or down on your resume. In two-column templates the
-            order applies within each column.
+            order and page breaks apply within each column.
         </p>
 
         <ol class="grid gap-1">
@@ -40,7 +43,15 @@ function move(index: number, direction: -1 | 1) {
                         >{{ index + 1 }}.</span
                     >{{ SECTION_LABELS[key] }}
                 </span>
-                <span class="flex gap-1">
+                <span class="flex items-center gap-2">
+                    <label class="flex items-center gap-1 text-xs">
+                        <input
+                            type="checkbox"
+                            v-model="pageBreaks"
+                            :value="key"
+                        />
+                        Start on new page
+                    </label>
                     <Button
                         type="button"
                         size="sm"
