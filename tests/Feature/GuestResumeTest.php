@@ -62,13 +62,13 @@ test('guests can download a pdf', function () {
     $this->postJson(route('build.pdf'), guestPayload())
         ->assertOk()
         ->assertHeader('content-type', 'application/pdf')
-        ->assertDownload('guest-person-resume.pdf');
+        ->assertDownload('guest-person_classic.pdf');
 });
 
 test('guests can download a docx', function () {
     $this->postJson(route('build.docx'), guestPayload())
         ->assertOk()
-        ->assertDownload('guest-person-resume.docx');
+        ->assertDownload('guest-person_classic.docx');
 });
 
 test('guest downloads reject invalid data', function (string $route) {

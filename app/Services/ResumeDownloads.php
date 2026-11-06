@@ -44,8 +44,11 @@ class ResumeDownloads
 
     private function filename(Resume $resume, string $extension): string
     {
-        $name = ($resume->data['personal']['full_name'] ?? '') ?: ($resume->title ?: 'my');
+        $name = trim((string) ($resume->data['personal']['full_name'] ?? '')) ?: ($resume->title ?: 'my');
+        $template = array_key_exists((string) $resume->template, config('resume.templates'))
+            ? $resume->template
+            : config('resume.default_template');
 
-        return (Str::slug($name) ?: 'my').'-resume.'.$extension;
+        return (Str::slug($name) ?: 'my').'_'.Str::slug($template).'.'.$extension;
     }
 }

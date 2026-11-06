@@ -656,3 +656,25 @@ test('manual page breaks are saved and validated', function () {
     $payload['data']['settings']['page_break_before'] = ['unknown'];
     $this->putJson(route('resumes.update', $resume), $payload)->assertUnprocessable();
 });
+
+test('download filenames identify the candidate and selected template in both formats', function (string $template, string $extension) {
+    $user = User::factory()->create();
+    $data = Resume::defaultData();
+    $data['personal']['full_name'] = 'Jaydeep Deepak Durgavali';
+    $resume = $user->resumes()->create(['template' => $template, 'data' => $data]);
+
+    $this->actingAs($user)->get(route('resumes.'.$extension, $resume))
+        ->assertOk()
+        ->assertDownload('jaydeep-deepak-durgavali_'.$template.'.'.$extension);
+})->with(['classic', 'executive', 'banner'])->with(['pdf', 'docx']);
+
+test('download filenames fall back to the resume title and the rendered default template', function () {
+    $user = User::factory()->create();
+    $data = Resume::defaultData();
+    $data['personal']['full_name'] = '   ';
+    $resume = $user->resumes()->create(['title' => 'My Resume', 'template' => 'unknown', 'data' => $data]);
+
+    $this->actingAs($user)->get(route('resumes.pdf', $resume))
+        ->assertOk()
+        ->assertDownload('my-resume_classic.pdf');
+});

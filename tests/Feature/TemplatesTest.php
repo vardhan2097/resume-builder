@@ -302,7 +302,7 @@ test('PDF preview and download have matching printable pages for every template'
     $preview = $this->postJson(route('build.preview'), $payload + ['format' => 'pdf'])
         ->assertOk()->assertHeader('Content-Type', 'application/pdf');
     $download = $this->postJson(route('build.pdf'), $payload)
-        ->assertOk()->assertDownload('richard-sanchez-resume.pdf')->assertHeader('Content-Type', 'application/pdf');
+        ->assertOk()->assertDownload('richard-sanchez_'.$template.'.pdf')->assertHeader('Content-Type', 'application/pdf');
     $parser = new Parser;
     $previewPages = $parser->parseContent($preview->getContent())->getPages();
     $downloadPages = $parser->parseContent($download->getContent())->getPages();
