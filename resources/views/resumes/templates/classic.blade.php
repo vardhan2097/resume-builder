@@ -114,7 +114,7 @@
                             @foreach ($experience as $job)
                                 <div class="item" data-page-break="{{ !empty($job['page_break_before']) ? 1 : 0 }}">
                                     <div class="item-title">
-                                        {{ $job['job_title'] }}@if ($job['job_title'] && $job['company']), @endif{{ $job['company'] }}
+                                        {{ $job['job_title'] ?? '' }}@if (!empty($job['job_title']) && !empty($job['company'])), @endif{{ $job['company'] ?? '' }}
                                     </div>
                                     <div class="item-meta">
                                         {{ F::range($job['start_date'] ?? null, $job['end_date'] ?? null, (bool) ($job['current'] ?? false)) }}

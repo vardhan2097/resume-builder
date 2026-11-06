@@ -32,6 +32,25 @@ function move(index: number, direction: -1 | 1) {
             order and page breaks apply within each column.
         </p>
 
+        <div
+            v-if="pageBreaks.length"
+            class="mb-4 flex items-center justify-between gap-3 rounded-md bg-muted px-3 py-2 text-sm"
+        >
+            <span>
+                {{ pageBreaks.length }} manual section
+                {{ pageBreaks.length === 1 ? 'break is' : 'breaks are' }}
+                active. These can leave empty space on the previous page.
+            </span>
+            <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                @click="pageBreaks = []"
+            >
+                Clear section breaks
+            </Button>
+        </div>
+
         <ol class="grid gap-1">
             <li
                 v-for="(key, index) in sections"

@@ -136,7 +136,10 @@ class Resume extends Model
         $defaults = self::defaultData();
         $data = array_replace($defaults, (array) $data);
 
-        $data['personal'] = array_replace($defaults['personal'], (array) $data['personal']);
+        $data['personal'] = array_map(
+            fn ($value) => trim((string) $value),
+            array_replace($defaults['personal'], (array) $data['personal']),
+        );
         // Not array_replace_recursive: that would merge section_order by index.
         $settings = array_replace($defaults['settings'], (array) $data['settings']);
         $settings['show_levels'] = array_replace($defaults['settings']['show_levels'], (array) $settings['show_levels']);

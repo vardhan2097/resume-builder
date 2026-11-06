@@ -369,7 +369,7 @@ class ResumeFormat
 
             foreach ($items as $item) {
                 $lines += match ($section) {
-                    'skills', 'tools', 'languages' => self::showLevels($data, $section) ? 2 : 1,
+                    'skills', 'tools', 'languages' => $wrap((string) $item['name']) + (self::showLevels($data, $section) ? 1 : 0),
                     'hobbies' => 1,
                     'certifications' => $wrap((string) $item['name']) + 1.5,
                     'references' => 4.5,

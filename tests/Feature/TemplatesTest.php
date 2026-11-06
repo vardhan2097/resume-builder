@@ -232,3 +232,155 @@ test('short education entries keep the degree and institution on the same page',
     }
     expect($found)->toHaveCount(10);
 })->with($templates);
+
+test('every template preserves all content within printable A4 bounds', function (string $template, string $scenario) {
+    $data = fullResumeData(jobs: $scenario === 'many jobs' ? 18 : 2);
+    if ($scenario === 'long entry') {
+        $data['experience'][0]['description'] = implode("\n", array_map(fn ($i) => "Unique bullet {$i} assembly.", range(1, 100)));
+    }
+    if (in_array($scenario, ['long sidebar', 'unrated sidebar', 'wrapped sidebar'])) {
+        $data['skills'] = array_map(fn ($i) => ['id' => "skill{$i}", 'name' => "Unique skill {$i} assembly testing and quality assurance work", 'level' => 3], range(1, 40));
+    }
+    if ($scenario === 'unrated sidebar') {
+        $data['settings']['show_levels']['skills'] = false;
+    }
+    if ($scenario === 'wrapped sidebar') {
+        $data['skills'] = array_slice($data['skills'], 0, 18);
+        foreach ($data['skills'] as &$skill) {
+            $skill['name'] = substr($skill['name'], 0, strpos($skill['name'], 'assembly')).'assembly testing quality assurance workflows';
+        }
+        unset($skill);
+    }
+    $html = app(ResumeRenderer::class)->render($template, '#0f766e', $data, pdf: true);
+    $bytes = Pdf::loadHTML($html)->setPaper('a4')->setOption('isRemoteEnabled', false)->output();
+    $document = (new Parser)->parseContent($bytes);
+    $text = $document->getText();
+    expect($text)->toContain('Goa University', 'Google Ads', 'Chess', 'Estelle Darcy');
+    if ($scenario === 'long entry') {
+        foreach (range(1, 100) as $i) {
+            expect($text)->toContain("Unique bullet {$i} ");
+        }
+    }
+    if (in_array($scenario, ['long sidebar', 'unrated sidebar', 'wrapped sidebar'])) {
+        foreach (range(1, $scenario === 'wrapped sidebar' ? 18 : 40) as $i) {
+            expect(preg_replace('/\s+/', ' ', $text))->toContain("Unique skill {$i} ");
+        }
+    }
+    foreach ($document->getPages() as $page) {
+        expect(trim($page->getText()))->not->toBeEmpty();
+        foreach ($page->getDataTm() as [$matrix, $label]) {
+            if (trim($label) === '') {
+                continue;
+            }
+            expect((float) $matrix[4], $label.' horizontal position')->toBeGreaterThanOrEqual(20)->toBeLessThan(575)
+                ->and((float) $matrix[5], $label.' vertical position')->toBeGreaterThan(20)->toBeLessThan(822);
+        }
+    }
+})->with($templates)->with(['many jobs', 'long entry', 'long sidebar', 'unrated sidebar', 'wrapped sidebar']);
+
+test('ordinary sidebar content starts on page one without a manual break', function (string $template) {
+    $data = fullResumeData();
+    $data['skills'] = array_map(fn ($i) => ['id' => "s{$i}", 'name' => "Assembly and quality testing skill {$i}", 'level' => 3], range(1, 10));
+    $bytes = Pdf::loadHTML(app(ResumeRenderer::class)->render($template, '#0f766e', $data, pdf: true))->setPaper('a4')->output();
+    $pages = (new Parser)->parseContent($bytes)->getPages();
+    expect($pages[0]->getText())->toContain('Assembly and quality testing skill 1');
+})->with($templates);
+
+test('manual sidebar breaks deliberately leave skills off the first page', function (string $template) {
+    $data = fullResumeData();
+    $data['settings']['page_break_before'] = ['skills'];
+    $bytes = Pdf::loadHTML(app(ResumeRenderer::class)->render($template, '#0f766e', $data, pdf: true))->setPaper('a4')->output();
+    $pages = (new Parser)->parseContent($bytes)->getPages();
+    expect($pages)->toHaveCount(2)
+        ->and($pages[0]->getText())->not->toContain('Branding')
+        ->and($pages[1]->getText())->toContain('Branding');
+})->with($templates);
+
+test('PDF preview and download have matching printable pages for every template', function (string $template) {
+    $data = fullResumeData(jobs: 9);
+    $payload = ['title' => 'Print check', 'template' => $template, 'color' => '#0f766e', 'data' => $data];
+    $preview = $this->postJson(route('build.preview'), $payload + ['format' => 'pdf'])
+        ->assertOk()->assertHeader('Content-Type', 'application/pdf');
+    $download = $this->postJson(route('build.pdf'), $payload)
+        ->assertOk()->assertDownload('richard-sanchez-resume.pdf')->assertHeader('Content-Type', 'application/pdf');
+    $parser = new Parser;
+    $previewPages = $parser->parseContent($preview->getContent())->getPages();
+    $downloadPages = $parser->parseContent($download->getContent())->getPages();
+    $preview->assertHeader('X-PDF-Pages', (string) count($downloadPages));
+    expect(count($previewPages))->toBe(count($downloadPages));
+    foreach ($downloadPages as $i => $page) {
+        expect($page->getText())->toBe($previewPages[$i]->getText());
+        $size = $page->getDetails()['MediaBox'];
+        expect((float) $size[2])->toBeBetween(595, 596)
+            ->and((float) $size[3])->toBeBetween(841, 843);
+    }
+})->with($templates);
+
+test('every template prints empty and sparse resumes without blank pages', function (string $template, bool $sparse) {
+    $data = Resume::defaultData();
+    if ($sparse) {
+        $data['personal']['full_name'] = 'Sparse Resume';
+        $data['projects'][] = ['id' => 'only', 'name' => 'Only Project', 'description' => 'Only project description.'];
+    }
+    $bytes = Pdf::loadHTML(app(ResumeRenderer::class)->render($template, '#0f766e', $data, pdf: true))->setPaper('a4')->output();
+    $pages = (new Parser)->parseContent($bytes)->getPages();
+    expect($pages)->toHaveCount(1)
+        ->and($pages[0]->getText())->toContain($sparse ? 'Only Project' : ($template === 'classic' ? 'Your Name' : 'YOUR NAME'));
+})->with($templates)->with([false, true]);
+
+test('omitted null and blank sections render exactly like an empty section', function (string $template, string $section) {
+    $data = fullResumeData();
+    $data[$section] = [];
+    // An empty section must not activate a stale saved page break.
+    $data['settings']['page_break_before'] = [$section];
+    $renderer = app(ResumeRenderer::class);
+    foreach ([false, true] as $pdf) {
+        $expected = $renderer->render($template, '#0f766e', $data, pdf: $pdf);
+        foreach (['missing', 'null', 'blank'] as $state) {
+            $variant = $data;
+            if ($state === 'missing') {
+                unset($variant[$section]);
+            } elseif ($state === 'null') {
+                $variant[$section] = null;
+            } elseif ($section === 'hobbies') {
+                $variant[$section] = ['', '   ', null];
+            } else {
+                $variant[$section] = [['id' => 'blank', 'name' => '  ', 'job_title' => '', 'company' => ' ', 'degree' => ' ', 'institution' => '', 'level' => 3, 'page_break_before' => true]];
+            }
+            expect($renderer->render($template, '#0f766e', $variant, pdf: $pdf))->toBe($expected);
+        }
+    }
+})->with($templates)->with(Resume::SECTIONS);
+
+test('each section can be printed on its own without other sections', function (string $template, string $section) {
+    $full = fullResumeData();
+    $data = ['personal' => ['full_name' => 'Single Section'], $section => $full[$section]];
+    $bytes = Pdf::loadHTML(app(ResumeRenderer::class)->render($template, '#0f766e', $data, pdf: true))->setPaper('a4')->output();
+    $pages = (new Parser)->parseContent($bytes)->getPages();
+    $labels = ['experience' => 'Borcelle 1', 'education' => 'Goa University', 'skills' => 'Branding', 'tools' => 'Figma', 'projects' => 'Brand Refresh', 'certifications' => 'Google Ads', 'languages' => 'Konkani', 'hobbies' => 'Chess', 'references' => 'Estelle Darcy'];
+    expect($pages)->toHaveCount(1)
+        ->and($pages[0]->getText())->toContain($template === 'classic' ? 'Single Section' : 'SINGLE SECTION', $labels[$section]);
+})->with($templates)->with(Resume::SECTIONS);
+
+test('whitespace only personal fields do not create empty headings or contacts', function (string $template) {
+    $data = Resume::defaultData();
+    $renderer = app(ResumeRenderer::class);
+    foreach ([false, true] as $pdf) {
+        $empty = $renderer->render($template, '#0f766e', $data, pdf: $pdf);
+        $data['personal'] = array_fill_keys(array_keys($data['personal']), " \n\t ");
+        expect($renderer->render($template, '#0f766e', $data, pdf: $pdf))->toBe($empty);
+        $data = Resume::defaultData();
+    }
+})->with($templates);
+
+test('partially completed employment and education rows print without missing field errors', function (string $template) {
+    $data = Resume::defaultData();
+    $data['experience'] = [['id' => 'company', 'company' => 'Only Company'], ['id' => 'role', 'job_title' => 'Only Role']];
+    $data['education'] = [['id' => 'school', 'institution' => 'Only School'], ['id' => 'degree', 'degree' => 'Only Degree']];
+    $renderer = app(ResumeRenderer::class);
+    foreach ([false, true] as $pdf) {
+        expect($renderer->render($template, '#0f766e', $data, pdf: $pdf))->toContain('Only Company', 'Only Role', 'Only School', 'Only Degree');
+    }
+    $bytes = Pdf::loadHTML($renderer->render($template, '#0f766e', $data, pdf: true))->setPaper('a4')->output();
+    expect((new Parser)->parseContent($bytes)->getText())->toContain('Only Company', 'Only Role', 'Only School', 'Only Degree');
+})->with($templates);

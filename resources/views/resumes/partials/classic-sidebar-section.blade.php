@@ -31,11 +31,11 @@
             <div class="rule"></div>
             @foreach ($education as $edu)
                 <div class="side-item" data-page-break="{{ !empty($edu['page_break_before']) ? 1 : 0 }}">
-                    @if ($edu['degree'])
+                    @if (!empty($edu['degree']))
                         <div class="side-title">{{ $edu['degree'] }}</div>
                     @endif
-                    @if ($edu['institution'])
-                        <div class="{{ $edu['degree'] ? '' : 'side-title' }}">{{ $edu['institution'] }}</div>
+                    @if (!empty($edu['institution']))
+                        <div class="{{ !empty($edu['degree']) ? '' : 'side-title' }}">{{ $edu['institution'] }}</div>
                     @endif
                     @if (count(F::strings([F::range($edu['start_date'] ?? null, $edu['end_date'] ?? null), $edu['score'] ?? '', $edu['location'] ?? ''])))
                         <div class="side-meta">{{ implode(' · ', F::strings([F::range($edu['start_date'] ?? null, $edu['end_date'] ?? null), $edu['score'] ?? '', $edu['location'] ?? ''])) }}</div>

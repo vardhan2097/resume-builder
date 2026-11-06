@@ -97,8 +97,21 @@ class ClassicResumePaginator
         @$document->loadHTML('<?xml encoding="UTF-8"><html><body>'.$html.'</body></html>');
         $body = $document->getElementsByTagName('body')->item(0);
         $entry = $body?->firstChild;
-        if (! $entry instanceof DOMElement || ! in_array($entry->getAttribute('class'), ['item', 'side-item'], true)) {
+        if (! $entry instanceof DOMElement || ! in_array($entry->getAttribute('class'), ['item', 'side-item', 'tags'], true)) {
             return [$html];
+        }
+
+        // A tag collection can exceed a page even though each individual tag fits.
+        // Give pagination one tag at a time while retaining the template styling.
+        if ($entry->getAttribute('class') === 'tags') {
+            $tags = [];
+            foreach ($entry->childNodes as $tag) {
+                if ($tag instanceof DOMElement) {
+                    $tags[] = '<div class="tags">'.$this->html($document, $tag).'</div>';
+                }
+            }
+
+            return $tags ?: [$html];
         }
 
         $parts = [];
