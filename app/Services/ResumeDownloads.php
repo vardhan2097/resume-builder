@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Resume;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -21,18 +20,12 @@ class ResumeDownloads
 
     public function pdf(Resume $resume): Response
     {
-        $html = $this->renderer->render(
+        return $this->renderer->document(
             $resume->template,
             $resume->color,
             $resume->data,
-            pdf: true,
             photoPath: $resume->photo_path,
-        );
-
-        return Pdf::loadHTML($html)
-            ->setPaper('a4')
-            ->setOption('isRemoteEnabled', false)
-            ->download($this->filename($resume, 'pdf'));
+        )->download($this->filename($resume, 'pdf'));
     }
 
     public function docx(Resume $resume): BinaryFileResponse

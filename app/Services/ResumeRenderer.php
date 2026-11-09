@@ -3,7 +3,10 @@
 namespace App\Services;
 
 use App\Models\Resume;
+use App\Support\ResumeFormat;
+use App\Support\ResumeWatermark;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Barryvdh\DomPDF\PDF as PdfDocument;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\Factory as ViewFactory;
@@ -14,8 +17,7 @@ class ResumeRenderer
 
     public function pdfPreview(?string $template, ?string $color, mixed $data, ?string $photoPath = null): Response
     {
-        $pdf = Pdf::loadHTML($this->render($template, $color, $data, pdf: true, photoPath: $photoPath))
-            ->setPaper('a4')->setOption('isRemoteEnabled', false);
+        $pdf = $this->document($template, $color, $data, $photoPath);
         $bytes = $pdf->output();
 
         return response($bytes, 200, [
@@ -24,6 +26,35 @@ class ResumeRenderer
             'Cache-Control' => 'private, no-store',
             'X-PDF-Pages' => (string) $pdf->getDomPDF()->getCanvas()->get_page_count(),
         ]);
+    }
+
+    public function document(?string $template, ?string $color, mixed $data, ?string $photoPath = null): PdfDocument
+    {
+        $pdf = Pdf::loadHTML($this->render($template, $color, $data, pdf: true, photoPath: $photoPath))
+            ->setPaper('a4')->setOption('isRemoteEnabled', false);
+        $pdf->render();
+
+        $dompdf = $pdf->getDomPDF();
+        $canvas = $dompdf->getCanvas();
+        $metrics = $dompdf->getFontMetrics();
+        $font = $metrics->getFont('DejaVu Sans', 'normal');
+        $bold = $metrics->getFont('DejaVu Sans', 'bold');
+
+        $accent = preg_match('/^#[0-9a-fA-F]{6}$/', (string) $color)
+            ? $color : config('resume.default_color');
+        $rgb = fn (string $hex) => array_map(fn (string $channel) => hexdec($channel) / 255, str_split(ltrim($hex, '#'), 2));
+
+        // Draw inside the bottom margin so the signature never changes pagination.
+        foreach ([
+            [ResumeWatermark::text(), $bold, 7, 19, $rgb($accent)],
+            [ResumeWatermark::TAGLINE, $font, 5.5, 10, $rgb(ResumeFormat::tint($accent, 0.35))],
+        ] as [$text, $typeface, $size, $bottom, $ink]) {
+            $width = $metrics->getTextWidth($text, $typeface, $size);
+            $canvas->page_text(($canvas->get_width() - $width) / 2, $canvas->get_height() - $bottom,
+                $text, $typeface, $size, $ink);
+        }
+
+        return $pdf;
     }
 
     public function render(

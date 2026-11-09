@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Resume;
 use App\Support\ResumeFormat as F;
+use App\Support\ResumeWatermark;
 use PhpOffice\PhpWord\Element\Section;
 use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\PhpWord;
@@ -35,6 +36,16 @@ class ResumeDocxBuilder
             'marginLeft' => Converter::cmToTwip(2),
             'marginRight' => Converter::cmToTwip(2),
         ]);
+
+        $footer = $section->addFooter();
+        $footer->addText(ResumeWatermark::text(),
+            ['size' => 8, 'bold' => true, 'color' => $this->color],
+            ['alignment' => 'center', 'spaceAfter' => 20],
+        );
+        $footer->addText(ResumeWatermark::TAGLINE,
+            ['size' => 7, 'color' => ltrim(F::tint('#'.$this->color, 0.35), '#')],
+            ['alignment' => 'center', 'spaceAfter' => 0],
+        );
 
         $this->header($section, $p);
 
