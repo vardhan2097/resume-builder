@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { docx, index, pdf, preview, update } from '@/routes/resumes';
 import ResumePreview from '@/components/resume/ResumePreview.vue';
+import TemplateGallery from '@/components/resume/TemplateGallery.vue';
 import type { Resume, TemplateMeta } from '@/types/resume';
 import PhotoSection from '@/components/resume/PhotoSection.vue';
 import { useUnsavedChangesGuard } from '@/composables/useUnsavedChangesGuard';
@@ -36,6 +37,12 @@ const AUTOSAVE_DELAY = 2000;
 
 const lastSavedAt = ref<Date | null>(null);
 const saveFailed = ref(false);
+const comparingTemplates = ref(false);
+
+function selectTemplate(template: string) {
+    form.template = template;
+    comparingTemplates.value = false;
+}
 
 // A save requested while another is in flight runs once that one finishes.
 let queued = false;
@@ -136,7 +143,19 @@ function download(kind: 'pdf' | 'docx') {
 <template>
     <Head :title="form.title || 'Edit resume'" />
 
+    <TemplateGallery
+        v-if="comparingTemplates"
+        :templates="templates"
+        :defaults="form.content"
+        :content="form.content"
+        :color="form.color"
+        :preview-url="preview(resume.id).url"
+        can-cancel
+        @cancel="comparingTemplates = false"
+        @select="selectTemplate"
+    />
     <div
+        v-else
         class="grid gap-6 p-4 lg:h-[calc(100dvh-5rem)] lg:min-h-0 lg:grid-cols-2 lg:overflow-hidden"
     >
         <form
@@ -210,6 +229,7 @@ function download(kind: 'pdf' | 'docx') {
                 v-model:template="form.template"
                 v-model:color="form.color"
                 :templates="templates"
+                @change-template="comparingTemplates = true"
             />
 
             <SectionOrder

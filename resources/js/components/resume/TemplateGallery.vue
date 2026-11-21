@@ -4,14 +4,18 @@ import { preview } from '@/actions/App/Http/Controllers/GuestResumeController';
 import { Button } from '@/components/ui/button';
 import PreviewLoading from '@/components/resume/PreviewLoading.vue';
 import { post } from '@/lib/http';
-import { sampleResume } from '@/lib/sampleResume';
+import { resumeWithExamples, sampleResume } from '@/lib/sampleResume';
 import type { ResumeData, TemplateMeta } from '@/types/resume';
 
 const props = defineProps<{
     templates: Record<string, TemplateMeta>;
     defaults: ResumeData;
+    content?: ResumeData;
+    color?: string;
+    previewUrl?: string;
+    canCancel?: boolean;
 }>();
-const emit = defineEmits<{ select: [template: string] }>();
+const emit = defineEmits<{ select: [template: string]; cancel: [] }>();
 const previews = ref<Record<string, string>>({});
 const failed = ref<string[]>([]);
 const selectedTemplate = ref<string | null>(null);
@@ -40,15 +44,17 @@ function viewTemplate(template: string) {
     selectedTemplate.value = template;
 }
 
-const sample = sampleResume(props.defaults);
+const sample = props.content
+    ? resumeWithExamples(props.content)
+    : sampleResume(props.defaults);
 
 onMounted(async () => {
     await Promise.all(
         Object.entries(props.templates).map(async ([key, meta]) => {
             try {
-                const response = await post(preview().url, {
+                const response = await post(props.previewUrl ?? preview().url, {
                     template: key,
-                    color: meta.palettes[0] ?? '#0f766e',
+                    color: props.color ?? meta.palettes[0] ?? '#0f766e',
                     data: sample,
                 });
                 previews.value[key] = await response.text();
@@ -62,6 +68,14 @@ onMounted(async () => {
 
 <template>
     <section class="mx-auto w-full max-w-7xl px-4 py-8">
+        <Button
+            v-if="canCancel"
+            type="button"
+            variant="ghost"
+            class="mb-4 -ml-3"
+            @click="emit('cancel')"
+            >← Back to editor</Button
+        >
         <template v-if="selectedTemplate">
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div>
@@ -76,7 +90,11 @@ onMounted(async () => {
                         {{ templates[selectedTemplate].name }}
                     </h1>
                     <p class="mt-2 text-sm text-muted-foreground">
-                        Sample resume
+                        {{
+                            content
+                                ? 'Your resume with examples for empty fields'
+                                : 'Sample resume'
+                        }}
                     </p>
                 </div>
                 <Button type="button" @click="emit('select', selectedTemplate)"
@@ -125,7 +143,7 @@ onMounted(async () => {
                             <iframe
                                 :srcdoc="previews[selectedTemplate]"
                                 sandbox=""
-                                :title="`${templates[selectedTemplate].name} sample resume`"
+                                :title="`${templates[selectedTemplate].name} resume preview`"
                                 class="block h-[1600px] w-[794px] origin-top-left border-0 bg-white shadow-sm"
                                 :style="{ transform: `scale(${scale})` }"
                             />
@@ -148,8 +166,11 @@ onMounted(async () => {
                 Choose a resume template
             </h1>
             <p class="mt-2 text-sm text-muted-foreground">
-                Explore each design using sample information, then choose one to
-                start your resume.
+                {{
+                    content
+                        ? 'Compare designs using your resume. Empty fields show examples.'
+                        : 'Explore each design using sample information, then choose one to start your resume.'
+                }}
             </p>
             <div class="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 <article
@@ -172,7 +193,7 @@ onMounted(async () => {
                                 :srcdoc="previews[key]"
                                 sandbox=""
                                 tabindex="-1"
-                                :title="`${meta.name} sample resume`"
+                                :title="`${meta.name} resume preview`"
                                 class="pointer-events-none absolute top-0 left-1/2 h-[1100px] w-[794px] origin-top -translate-x-1/2 scale-[0.36] border-0 bg-white"
                             />
                             <p

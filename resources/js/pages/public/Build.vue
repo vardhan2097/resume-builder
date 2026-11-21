@@ -33,12 +33,16 @@ const { resume, reset } = useGuestResume(props.defaults);
 const choosingTemplate = ref(
     !hasContent(resume.data) && !resume.data.settings.hidden_sections?.length,
 );
+const comparingTemplates = ref(false);
 
 function selectTemplate(template: string) {
     resume.template = template;
-    resume.color =
-        props.templates[template]?.palettes[0] ?? props.defaults.color;
+    if (!comparingTemplates.value) {
+        resume.color =
+            props.templates[template]?.palettes[0] ?? props.defaults.color;
+    }
     choosingTemplate.value = false;
+    comparingTemplates.value = false;
 }
 
 const busy = ref<'pdf' | 'docx' | 'import' | null>(null);
@@ -108,6 +112,7 @@ async function importResume(event: Event) {
 function startOver() {
     if (confirm('Clear everything and start a new resume?')) {
         reset();
+        comparingTemplates.value = false;
         choosingTemplate.value = true;
     }
 }
@@ -120,6 +125,13 @@ function startOver() {
         v-if="choosingTemplate"
         :templates="templates"
         :defaults="defaults.data"
+        :content="comparingTemplates ? resume.data : undefined"
+        :color="comparingTemplates ? resume.color : undefined"
+        :can-cancel="comparingTemplates"
+        @cancel="
+            choosingTemplate = false;
+            comparingTemplates = false;
+        "
         @select="selectTemplate"
     />
     <div
@@ -221,6 +233,10 @@ function startOver() {
                 v-model:template="resume.template"
                 v-model:color="resume.color"
                 :templates="templates"
+                @change-template="
+                    comparingTemplates = true;
+                    choosingTemplate = true;
+                "
             />
 
             <SectionOrder
