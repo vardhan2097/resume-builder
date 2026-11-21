@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -127,6 +128,8 @@ class ResumeController extends Controller
     {
         Gate::authorize('update', $resume);
 
+        $this->validateDownload($resume);
+
         return $downloads->pdf($resume);
     }
 
@@ -134,7 +137,19 @@ class ResumeController extends Controller
     {
         Gate::authorize('update', $resume);
 
+        $this->validateDownload($resume);
+
         return $downloads->docx($resume);
+    }
+
+    private function validateDownload(Resume $resume): void
+    {
+        Validator::make([
+            'title' => $resume->title,
+            'template' => $resume->template,
+            'color' => $resume->color,
+            'data' => Resume::withDefaults($resume->data),
+        ], ResumeRules::withTitle())->validate();
     }
 
     public function uploadPhoto(Request $request, Resume $resume): RedirectResponse

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { useEventListener } from '@vueuse/core';
 import { FileText } from '@lucide/vue';
 import {
@@ -14,6 +14,7 @@ import DesignSection from '@/components/resume/DesignSection.vue';
 import SectionOrder from '@/components/resume/SectionOrder.vue';
 import ResumePreview from '@/components/resume/ResumePreview.vue';
 import TemplateGallery from '@/components/resume/TemplateGallery.vue';
+import ValidationSummary from '@/components/resume/ValidationSummary.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -23,6 +24,7 @@ import {
 } from '@/composables/useGuestResume';
 import { downloadPost, HttpError, post } from '@/lib/http';
 import type { RequestErrors } from '@/lib/http';
+import { focusError, highlightErrors } from '@/lib/validation';
 import { login, register } from '@/routes';
 import type { GuestResume, ResumeData, TemplateMeta } from '@/types/resume';
 
@@ -56,13 +58,39 @@ const errors = ref<RequestErrors>({});
 const message = ref('');
 const cvInput = ref<HTMLInputElement | null>(null);
 
-function showError(error: unknown) {
-    if (error instanceof HttpError) {
+watch(
+    errors,
+    (value) => {
+        void highlightErrors(value);
+    },
+    { deep: true, flush: 'post' },
+);
+
+function clearFieldError(event: Event) {
+    const field = (event.target as HTMLElement).dataset.field;
+    if (field && errors.value[field]) delete errors.value[field];
+}
+
+function showError(error: unknown, context: 'download' | 'import') {
+    if (
+        context === 'download' &&
+        error instanceof HttpError &&
+        error.status === 422 &&
+        Object.keys(error.errors).length
+    ) {
         errors.value = error.errors;
-        message.value = Object.keys(error.errors).length ? '' : error.message;
+        message.value = '';
+        void focusError(Object.keys(error.errors)[0]);
     } else {
         console.error(error);
-        message.value = 'Something went wrong. Please try again.';
+        message.value =
+            error instanceof HttpError &&
+            (error.status === 429 ||
+                (context === 'import' && error.status === 422))
+                ? error.message
+                : context === 'download'
+                  ? 'We could not prepare your download. Please try again.'
+                  : 'We could not import your CV. Please try again.';
     }
 }
 
@@ -74,7 +102,7 @@ async function download(kind: 'pdf' | 'docx') {
     try {
         await downloadPost(kind === 'pdf' ? pdf().url : docx().url, resume);
     } catch (error) {
-        showError(error);
+        showError(error, 'download');
     } finally {
         busy.value = null;
     }
@@ -109,7 +137,7 @@ async function importResume(event: Event) {
 
         resume.data = withDefaults(data, props.defaults.data);
     } catch (error) {
-        showError(error);
+        showError(error, 'import');
     } finally {
         busy.value = null;
     }
@@ -142,6 +170,8 @@ function startOver() {
     />
     <div
         v-else
+        @input="clearFieldError"
+        @change="clearFieldError"
         class="mx-auto grid w-full gap-6 p-4 lg:h-[calc(100dvh-5rem)] lg:min-h-0 lg:grid-cols-2 lg:overflow-hidden"
     >
         <div
@@ -166,6 +196,7 @@ function startOver() {
             >
                 <Input
                     v-model="resume.title"
+                    data-field="title"
                     class="min-w-40 flex-1 font-medium"
                 />
                 <Button
@@ -190,19 +221,16 @@ function startOver() {
             </div>
 
             <div
-                v-if="message || Object.keys(errors).length"
+                v-if="message"
                 class="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700"
             >
-                <p v-if="message">{{ message }}</p>
-                <template v-else>
-                    <p class="mb-1 font-medium">Please fix these:</p>
-                    <ul class="list-disc pl-5">
-                        <li v-for="(text, field) in errors" :key="field">
-                            {{ text }}
-                        </li>
-                    </ul>
-                </template>
+                <p>{{ message }}</p>
             </div>
+            <ValidationSummary
+                v-if="Object.keys(errors).length"
+                :errors="errors"
+                @select="focusError"
+            />
 
             <div class="flex flex-wrap gap-2">
                 <Button
@@ -271,7 +299,10 @@ function startOver() {
                 </div>
             </section>
 
-            <ContentSections v-model="resume.data" />
+            <ContentSections
+                v-model="resume.data"
+                :error-fields="Object.keys(errors)"
+            />
             <div
                 class="sticky bottom-4 z-30 self-end rounded-full border bg-background p-1 shadow-lg lg:hidden"
             >

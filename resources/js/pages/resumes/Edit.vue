@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
 import { useEventListener, watchDebounced } from '@vueuse/core';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { FileText } from '@lucide/vue';
 import ContentSections from '@/components/resume/ContentSections.vue';
 import DesignSection from '@/components/resume/DesignSection.vue';
@@ -11,6 +11,10 @@ import { Input } from '@/components/ui/input';
 import { docx, index, pdf, preview, update } from '@/routes/resumes';
 import ResumePreview from '@/components/resume/ResumePreview.vue';
 import TemplateGallery from '@/components/resume/TemplateGallery.vue';
+import ValidationSummary from '@/components/resume/ValidationSummary.vue';
+import { downloadGet, HttpError } from '@/lib/http';
+import type { RequestErrors } from '@/lib/http';
+import { focusError, highlightErrors } from '@/lib/validation';
 import type { Resume, TemplateMeta } from '@/types/resume';
 import PhotoSection from '@/components/resume/PhotoSection.vue';
 import { useUnsavedChangesGuard } from '@/composables/useUnsavedChangesGuard';
@@ -40,6 +44,40 @@ const lastSavedAt = ref<Date | null>(null);
 const saveFailed = ref(false);
 const comparingTemplates = ref(false);
 const mobilePreviewOpen = ref(false);
+const validationErrors = ref<RequestErrors>({});
+const downloadMessage = ref('');
+const downloading = ref(false);
+
+watch(
+    validationErrors,
+    (value) => {
+        void highlightErrors(value);
+    },
+    { deep: true, flush: 'post' },
+);
+
+function clearFieldError(event: Event) {
+    const field = (event.target as HTMLElement).dataset.field;
+    if (field && validationErrors.value[field])
+        delete validationErrors.value[field];
+}
+
+function downloadFailure(error: unknown) {
+    downloading.value = false;
+    if (
+        error instanceof HttpError &&
+        error.status === 422 &&
+        Object.keys(error.errors).length
+    ) {
+        validationErrors.value = error.errors;
+        void focusError(Object.keys(error.errors)[0]);
+        return;
+    }
+    downloadMessage.value =
+        error instanceof HttpError && error.status === 429
+            ? error.message
+            : 'We could not prepare your download. Please try again.';
+}
 
 function selectTemplate(template: string) {
     form.template = template;
@@ -78,20 +116,54 @@ function save(onSaved?: () => void) {
                 form.defaults(sent);
                 lastSavedAt.value = new Date();
                 saveFailed.value = false;
+                validationErrors.value = {};
 
-                const callback = afterSave;
-                afterSave = undefined;
-                callback?.();
+                if (JSON.stringify(form.data()) === JSON.stringify(sent)) {
+                    const callback = afterSave;
+                    afterSave = undefined;
+                    callback?.();
+                } else if (afterSave) {
+                    queued = true;
+                }
             },
-            onError: () => {
+            onError: (errors) => {
+                saveFailed.value = true;
+                validationErrors.value = errors as RequestErrors;
+                if (afterSave && Object.keys(errors).length) {
+                    void focusError(Object.keys(errors)[0]);
+                }
+                afterSave = undefined;
+                downloading.value = false;
+            },
+            onNetworkError: () => {
                 saveFailed.value = true;
                 afterSave = undefined;
+                downloading.value = false;
+                downloadMessage.value =
+                    'We could not save your changes. Check your connection and try again.';
+                return false;
+            },
+            onHttpException: () => {
+                saveFailed.value = true;
+                afterSave = undefined;
+                downloading.value = false;
+                downloadMessage.value =
+                    'We could not save your changes. Please try again.';
+                return false;
+            },
+            onCancel: () => {
+                if (afterSave) {
+                    afterSave = undefined;
+                    downloading.value = false;
+                    downloadMessage.value =
+                        'The save was interrupted. Please try your download again.';
+                }
             },
             onFinish: () => {
                 if (queued) {
                     queued = false;
 
-                    if (form.isDirty) {
+                    if (form.isDirty || afterSave) {
                         save();
                     }
                 }
@@ -131,15 +203,24 @@ function download(kind: 'pdf' | 'docx') {
     const url =
         kind === 'pdf' ? pdf(props.resume.id).url : docx(props.resume.id).url;
 
+    validationErrors.value = {};
+    downloadMessage.value = '';
+    downloading.value = true;
+    const startDownload = () => {
+        void downloadGet(url)
+            .catch(downloadFailure)
+            .finally(() => {
+                downloading.value = false;
+            });
+    };
+
     if (!form.isDirty && !form.processing) {
-        window.location.href = url;
+        startDownload();
 
         return;
     }
 
-    save(() => {
-        window.location.href = url;
-    });
+    save(startDownload);
 }
 </script>
 
@@ -162,6 +243,9 @@ function download(kind: 'pdf' | 'docx') {
         class="grid gap-6 p-4 lg:h-[calc(100dvh-5rem)] lg:min-h-0 lg:grid-cols-2 lg:overflow-hidden"
     >
         <form
+            novalidate
+            @input="clearFieldError"
+            @change="clearFieldError"
             class="flex flex-col gap-6 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-2"
             @submit.prevent="save()"
         >
@@ -170,6 +254,7 @@ function download(kind: 'pdf' | 'docx') {
             >
                 <Input
                     v-model="form.title"
+                    data-field="title"
                     class="min-w-40 flex-1 font-medium"
                 />
                 <span
@@ -206,7 +291,7 @@ function download(kind: 'pdf' | 'docx') {
                 <Button
                     type="button"
                     variant="outline"
-                    :disabled="form.processing"
+                    :disabled="form.processing || downloading"
                     @click="download('pdf')"
                 >
                     Download PDF
@@ -214,26 +299,25 @@ function download(kind: 'pdf' | 'docx') {
                 <Button
                     type="button"
                     variant="outline"
-                    :disabled="form.processing"
+                    :disabled="form.processing || downloading"
                     @click="download('docx')"
                 >
                     Download Word
                 </Button>
             </div>
 
-            <div
-                v-if="Object.keys(form.errors).length"
+            <p
+                v-if="downloadMessage"
+                role="alert"
                 class="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700"
             >
-                <p class="mb-1 font-medium">
-                    Your changes aren't saved yet. Please fix these:
-                </p>
-                <ul class="list-disc pl-5">
-                    <li v-for="(message, field) in form.errors" :key="field">
-                        {{ message }}
-                    </li>
-                </ul>
-            </div>
+                {{ downloadMessage }}
+            </p>
+            <ValidationSummary
+                v-if="Object.keys(validationErrors).length"
+                :errors="validationErrors"
+                @select="focusError"
+            />
 
             <DesignSection
                 v-model:template="form.template"
@@ -262,7 +346,10 @@ function download(kind: 'pdf' | 'docx') {
                 "
             />
 
-            <ContentSections v-model="form.content" />
+            <ContentSections
+                v-model="form.content"
+                :error-fields="Object.keys(validationErrors)"
+            />
             <div
                 class="sticky bottom-4 z-30 self-end rounded-full border bg-background p-1 shadow-lg lg:hidden"
             >

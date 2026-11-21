@@ -20,6 +20,7 @@ const emit = defineEmits<{ changeTemplate: [] }>();
                 <label class="text-sm font-medium">Template</label>
                 <select
                     v-model="template"
+                    data-field="template"
                     class="h-9 rounded-md border border-input bg-transparent px-2 text-sm"
                 >
                     <option
@@ -57,6 +58,7 @@ const emit = defineEmits<{ changeTemplate: [] }>();
                     />
                     <input
                         v-model="color"
+                        data-field="color"
                         type="color"
                         class="h-8 w-10 cursor-pointer rounded border"
                         aria-label="Custom colour"

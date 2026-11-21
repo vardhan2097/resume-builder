@@ -15,12 +15,13 @@ const blank = () => ({ name: '', issuer: '', date: '' });
         title="Certifications"
         :make-item="blank"
     >
-        <template #default="{ item }">
+        <template #default="{ item, index }">
             <div class="grid gap-4 sm:grid-cols-3">
                 <div class="grid gap-2">
                     <Label>Name</Label>
                     <Input
                         v-model="item.name"
+                        :data-field="`data.certifications.${index}.name`"
                         placeholder="e.g. AWS Solutions Architect"
                     />
                 </div>
@@ -28,12 +29,17 @@ const blank = () => ({ name: '', issuer: '', date: '' });
                     <Label>Issued by</Label>
                     <Input
                         v-model="item.issuer"
+                        :data-field="`data.certifications.${index}.issuer`"
                         placeholder="e.g. Design Institute"
                     />
                 </div>
                 <div class="grid gap-2">
                     <Label>Date</Label>
-                    <Input type="month" v-model="item.date" />
+                    <Input
+                        type="month"
+                        v-model="item.date"
+                        :data-field="`data.certifications.${index}.date`"
+                    />
                 </div>
             </div>
         </template>

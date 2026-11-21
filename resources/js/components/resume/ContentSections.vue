@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import CertificationsSection from '@/components/resume/CertificationsSection.vue';
 import EducationSection from '@/components/resume/EducationSection.vue';
 import ExperienceSection from '@/components/resume/ExperienceSection.vue';
@@ -14,6 +14,9 @@ import type { HiddenSectionKey, ResumeData } from '@/types/resume';
 
 /** Every content section of the editor, shared by the account and guest editors. */
 const content = defineModel<ResumeData>({ required: true });
+const props = withDefaults(defineProps<{ errorFields?: string[] }>(), {
+    errorFields: () => [],
+});
 
 // The editor lists sections in the same order as the resume.
 const order = computed(() =>
@@ -22,6 +25,25 @@ const order = computed(() =>
 
 const hiddenSections = computed(
     () => content.value.settings.hidden_sections ?? [],
+);
+const temporarilyShown = ref<HiddenSectionKey[]>([]);
+watch(
+    () => props.errorFields,
+    (fields) => {
+        for (const field of fields) {
+            const section =
+                field === 'data.personal.summary'
+                    ? 'summary'
+                    : field.split('.')[1];
+            if (
+                hiddenSections.value.includes(section as HiddenSectionKey) &&
+                !temporarilyShown.value.includes(section as HiddenSectionKey)
+            ) {
+                temporarilyShown.value.push(section as HiddenSectionKey);
+            }
+        }
+    },
+    { immediate: true },
 );
 
 function hideSection(key: HiddenSectionKey) {
@@ -36,14 +58,18 @@ function restoreSection(key: HiddenSectionKey) {
 </script>
 
 <template>
-    <details open class="rounded-xl border">
+    <details open data-section="personal" class="rounded-xl border">
         <summary class="cursor-pointer px-5 py-4 font-semibold">
             Personal details
         </summary>
         <PersonalSection
             class="border-0"
             v-model="content.personal"
-            :summary-hidden="hiddenSections.includes('summary')"
+            :summary-hidden="
+                hiddenSections.includes('summary') &&
+                !temporarilyShown.includes('summary')
+            "
+            :summary-is-hidden="hiddenSections.includes('summary')"
             @hide-summary="hideSection('summary')"
         />
     </details>
@@ -66,8 +92,13 @@ function restoreSection(key: HiddenSectionKey) {
     </section>
 
     <template v-for="key in order" :key="key">
-        <div v-if="!hiddenSections.includes(key)" class="relative">
-            <details class="rounded-xl border">
+        <div
+            v-if="
+                !hiddenSections.includes(key) || temporarilyShown.includes(key)
+            "
+            class="relative"
+        >
+            <details :data-section="key" class="rounded-xl border">
                 <summary class="cursor-pointer px-5 py-4 font-semibold">
                     {{ SECTION_LABELS[key] }}
                     <span class="ml-2 text-sm font-normal text-muted-foreground"
@@ -77,6 +108,12 @@ function restoreSection(key: HiddenSectionKey) {
                         }}</span
                     >
                 </summary>
+                <p
+                    v-if="hiddenSections.includes(key)"
+                    class="px-5 text-sm text-muted-foreground"
+                >
+                    This section is hidden from your resume.
+                </p>
                 <ExperienceSection
                     v-if="key === 'experience'"
                     v-model="content.experience"
@@ -127,6 +164,7 @@ function restoreSection(key: HiddenSectionKey) {
                 />
                 <div class="flex justify-end px-5 pb-4">
                     <Button
+                        v-if="!hiddenSections.includes(key)"
                         type="button"
                         variant="ghost"
                         size="sm"

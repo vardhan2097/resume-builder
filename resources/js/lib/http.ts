@@ -52,6 +52,12 @@ export async function post(
         body: isForm ? body : JSON.stringify(body),
     });
 
+    await checkResponse(response);
+
+    return response;
+}
+
+async function checkResponse(response: Response): Promise<void> {
     if (!response.ok) {
         const json = await response.json().catch(() => ({}));
         const errors = Object.fromEntries(
@@ -63,13 +69,30 @@ export async function post(
 
         throw new HttpError(response.status, errors);
     }
-
-    return response;
 }
 
 /** POST, then save the response body as a file using the server's filename. */
 export async function downloadPost(url: string, body: unknown): Promise<void> {
     const response = await post(url, body);
+    await saveDownload(response);
+}
+
+export async function downloadGet(url: string): Promise<void> {
+    const response = await fetch(url, {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+    });
+    await checkResponse(response);
+    await saveDownload(response);
+}
+
+async function saveDownload(response: Response): Promise<void> {
+    if (
+        response.redirected ||
+        response.headers.get('Content-Type')?.includes('text/html')
+    ) {
+        throw new Error('The download response was not a file.');
+    }
     const disposition = response.headers.get('Content-Disposition') ?? '';
     const filename =
         /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition)?.[1] ??

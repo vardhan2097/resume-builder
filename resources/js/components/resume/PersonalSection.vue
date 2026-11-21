@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import type { Personal } from '@/types/resume';
 import { Button } from '@/components/ui/button';
 
-defineProps<{ summaryHidden: boolean }>();
+defineProps<{ summaryHidden: boolean; summaryIsHidden?: boolean }>();
 const emit = defineEmits<{ hideSummary: [] }>();
 
 const personal = defineModel<Personal>({ required: true });
@@ -44,6 +44,7 @@ const fields: { key: keyof Personal; label: string; type: string }[] = [
                 <Input
                     :id="field.key"
                     :type="field.type"
+                    :data-field="`data.personal.${field.key}`"
                     :placeholder="examples[field.key]"
                     v-model="personal[field.key]"
                 />
@@ -54,6 +55,7 @@ const fields: { key: keyof Personal; label: string; type: string }[] = [
             <div class="flex items-center justify-between gap-2">
                 <Label for="summary">Professional summary</Label>
                 <Button
+                    v-if="!summaryIsHidden"
                     type="button"
                     variant="ghost"
                     size="sm"
@@ -61,8 +63,12 @@ const fields: { key: keyof Personal; label: string; type: string }[] = [
                     >Hide summary</Button
                 >
             </div>
+            <p v-if="summaryIsHidden" class="text-sm text-muted-foreground">
+                This section is hidden from your resume.
+            </p>
             <textarea
                 id="summary"
+                data-field="data.personal.summary"
                 v-model="personal.summary"
                 :placeholder="examples.summary"
                 rows="4"
