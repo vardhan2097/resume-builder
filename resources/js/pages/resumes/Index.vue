@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { destroy, edit, index, store } from '@/routes/resumes';
 import { ref } from 'vue';
 import { store as importCv } from '@/actions/App/Http/Controllers/ResumeImportController';
+import TemplateGallery from '@/components/resume/TemplateGallery.vue';
+import type { ResumeData, TemplateMeta } from '@/types/resume';
 
 type ResumeItem = {
     id: number;
@@ -14,6 +16,8 @@ type ResumeItem = {
 
 defineProps<{
     resumes: ResumeItem[];
+    templates: Record<string, TemplateMeta>;
+    defaults: ResumeData;
 }>();
 
 defineOptions({
@@ -22,8 +26,18 @@ defineOptions({
     },
 });
 
-function createResume() {
-    router.post(store().url);
+const choosingTemplate = ref(false);
+const importing = ref(false);
+const selectedImportTemplate = ref('');
+
+function createResume(template: string) {
+    if (importing.value) {
+        selectedImportTemplate.value = template;
+        choosingTemplate.value = false;
+        chooseCv();
+        return;
+    }
+    router.post(store().url, { template });
 }
 
 function deleteResume(resume: ResumeItem) {
@@ -43,7 +57,10 @@ function formatDate(iso: string) {
 }
 
 const cvInput = ref<HTMLInputElement | null>(null);
-const importForm = useForm<{ cv: File | null }>({ cv: null });
+const importForm = useForm<{ cv: File | null; template: string }>({
+    cv: null,
+    template: '',
+});
 
 function chooseCv() {
     cvInput.value?.click();
@@ -57,6 +74,7 @@ function importResume(event: Event) {
     }
 
     importForm.cv = file;
+    importForm.template = selectedImportTemplate.value;
     importForm.post(importCv().url, {
         onFinish: () => {
             importForm.reset();
@@ -71,28 +89,49 @@ function importResume(event: Event) {
 <template>
     <Head title="My Resumes" />
 
-    <div class="flex flex-col gap-6 p-4">
+    <input
+        ref="cvInput"
+        type="file"
+        accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        class="hidden"
+        @change="importResume"
+    />
+    <div v-if="choosingTemplate">
+        <div class="mx-auto max-w-7xl px-4 pt-4">
+            <Button variant="ghost" @click="choosingTemplate = false"
+                >← My resumes</Button
+            >
+        </div>
+        <TemplateGallery
+            :templates="templates"
+            :defaults="defaults"
+            @select="createResume"
+        />
+    </div>
+    <div v-else class="flex flex-col gap-6 p-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <h1 class="text-2xl font-semibold">My Resumes</h1>
             <div class="flex gap-2">
                 <Button
                     variant="outline"
                     :disabled="importForm.processing"
-                    @click="chooseCv"
+                    @click="
+                        importing = true;
+                        choosingTemplate = true;
+                    "
                 >
                     {{
                         importForm.processing ? 'Reading your CV…' : 'Import CV'
                     }}
                 </Button>
-                <Button @click="createResume">+ New Resume</Button>
+                <Button
+                    @click="
+                        importing = false;
+                        choosingTemplate = true;
+                    "
+                    >+ New Resume</Button
+                >
             </div>
-            <input
-                ref="cvInput"
-                type="file"
-                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                class="hidden"
-                @change="importResume"
-            />
         </div>
 
         <p

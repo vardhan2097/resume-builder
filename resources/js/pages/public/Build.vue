@@ -11,6 +11,7 @@ import ContentSections from '@/components/resume/ContentSections.vue';
 import DesignSection from '@/components/resume/DesignSection.vue';
 import SectionOrder from '@/components/resume/SectionOrder.vue';
 import ResumePreview from '@/components/resume/ResumePreview.vue';
+import TemplateGallery from '@/components/resume/TemplateGallery.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -29,6 +30,14 @@ const props = defineProps<{
 }>();
 
 const { resume, reset } = useGuestResume(props.defaults);
+const choosingTemplate = ref(!hasContent(resume.data));
+
+function selectTemplate(template: string) {
+    resume.template = template;
+    resume.color =
+        props.templates[template]?.palettes[0] ?? props.defaults.color;
+    choosingTemplate.value = false;
+}
 
 const busy = ref<'pdf' | 'docx' | 'import' | null>(null);
 const errors = ref<RequestErrors>({});
@@ -97,6 +106,7 @@ async function importResume(event: Event) {
 function startOver() {
     if (confirm('Clear everything and start a new resume?')) {
         reset();
+        choosingTemplate.value = true;
     }
 }
 </script>
@@ -104,7 +114,14 @@ function startOver() {
 <template>
     <Head title="Build your resume" />
 
+    <TemplateGallery
+        v-if="choosingTemplate"
+        :templates="templates"
+        :defaults="defaults.data"
+        @select="selectTemplate"
+    />
     <div
+        v-else
         class="mx-auto grid w-full gap-6 p-4 lg:h-[calc(100dvh-5rem)] lg:min-h-0 lg:grid-cols-2 lg:overflow-hidden"
     >
         <div
