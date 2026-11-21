@@ -10,6 +10,8 @@ const labels: Record<string, string> = {
     email: 'Email',
     phone: 'Phone',
     location: 'Location',
+    nationality: 'Nationality',
+    date_of_birth: 'Date of birth',
     website: 'Website',
     linkedin: 'LinkedIn URL',
     github: 'GitHub URL',

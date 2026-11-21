@@ -99,6 +99,8 @@ class Resume extends Model
                 'email' => '',
                 'phone' => '',
                 'location' => '',
+                'nationality' => '',
+                'date_of_birth' => '',
                 'website' => '',
                 'linkedin' => '',
                 'github' => '',

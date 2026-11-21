@@ -179,6 +179,8 @@ class ResumeFormat
             'phone' => 'Phone',
             'email' => 'Email',
             'location' => 'Address',
+            'nationality' => 'Nationality',
+            'date_of_birth' => 'Date of birth',
             'website' => 'Website',
             'linkedin' => 'LinkedIn',
             'github' => 'GitHub',

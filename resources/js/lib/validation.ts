@@ -13,8 +13,22 @@ export async function highlightErrors(errors: RequestErrors): Promise<void> {
         .forEach((element) => {
             if (element.dataset.field && errors[element.dataset.field]) {
                 element.setAttribute('aria-invalid', 'true');
+                let parent = element.parentElement;
+                while (parent) {
+                    if (parent instanceof HTMLDetailsElement)
+                        parent.open = true;
+                    parent = parent.parentElement;
+                }
             }
         });
+    for (const field of Object.keys(errors)) {
+        const section = field.startsWith('data.') ? field.split('.')[1] : '';
+        document
+            .querySelectorAll<HTMLDetailsElement>('details[data-section]')
+            .forEach((details) => {
+                if (details.dataset.section === section) details.open = true;
+            });
+    }
 }
 
 export async function focusError(field: string): Promise<void> {
@@ -29,7 +43,11 @@ export async function focusError(field: string): Promise<void> {
     const element = target ?? fallback?.querySelector<HTMLElement>('summary');
     if (!element) return;
 
-    element.closest('details')?.setAttribute('open', '');
+    let parent = element.parentElement;
+    while (parent) {
+        if (parent instanceof HTMLDetailsElement) parent.open = true;
+        parent = parent.parentElement;
+    }
     element.scrollIntoView({ behavior: 'smooth', block: 'center' });
     element.focus({ preventScroll: true });
 }

@@ -112,10 +112,10 @@
             @if (count($contacts))
                 <div class="sh">Contact</div>
                 <table class="contact">
-                    @foreach ($contacts as [$type, $value])
+                    @foreach ($contacts as [$type, $value, $label])
                         <tr>
-                            <td class="ci"><img src="{{ F::icon($type, $dark) }}" alt=""></td>
-                            <td>{{ in_array($type, ['website', 'linkedin', 'github']) ? F::shortUrl($value) : $value }}</td>
+                            <td class="ci"><img src="{{ F::icon($type === 'date_of_birth' ? 'calendar' : ($type === 'nationality' ? 'user' : $type), $dark) }}" alt=""></td>
+                            <td>{{ in_array($type, ['nationality', 'date_of_birth']) ? $label.': ' : '' }}{{ in_array($type, ['website', 'linkedin', 'github']) ? F::shortUrl($value) : $value }}</td>
                         </tr>
                     @endforeach
                 </table>

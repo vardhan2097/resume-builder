@@ -1,6 +1,10 @@
 <template>
     <span>
-        Made with <span aria-label="love">♥</span> in Bharat by Vardhan Joshi
-        <span role="img" aria-label="Indian flag">🇮🇳</span>
+        Made with ❤️ in India by Vardhan Joshi
+        <img
+            src="/india-flag.svg"
+            alt="Indian flag"
+            class="inline-block h-3 w-[18px] align-baseline"
+        />
     </span>
 </template>

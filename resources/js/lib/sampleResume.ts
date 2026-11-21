@@ -9,6 +9,8 @@ export function sampleResume(defaults: ResumeData): ResumeData {
             email: 'aarav@example.com',
             phone: '+91 98765 43210',
             location: 'Pune, India',
+            nationality: 'Indian',
+            date_of_birth: '1995-05-15',
             website: 'https://example.com',
             linkedin: 'https://linkedin.com/in/example',
             github: 'https://github.com/example',

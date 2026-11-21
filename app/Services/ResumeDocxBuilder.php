@@ -97,7 +97,7 @@ class ResumeDocxBuilder
             );
         }
 
-        $contacts = F::strings([$p['phone'], $p['email'], $p['location'], $p['website'], $p['linkedin'], $p['github']]);
+        $contacts = array_map(fn ($contact) => in_array($contact[0], ['nationality', 'date_of_birth']) ? $contact[2].': '.$contact[1] : $contact[1], F::contacts($p));
 
         if ($contacts) {
             $section->addText(implode('  |  ', $contacts), ['size' => 9, 'color' => '4B5563']);

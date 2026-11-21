@@ -4,6 +4,8 @@ export type Personal = {
     email: string;
     phone: string;
     location: string;
+    nationality: string;
+    date_of_birth: string;
     website: string;
     linkedin: string;
     github: string;

@@ -2,7 +2,7 @@
 import { Link } from '@inertiajs/vue3';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import DeveloperCredit from '@/components/DeveloperCredit.vue';
-import { home } from '@/routes';
+import { home, privacy } from '@/routes';
 
 defineProps<{
     title?: string;
@@ -42,6 +42,10 @@ defineProps<{
         </div>
         <footer class="text-center text-sm text-muted-foreground">
             <DeveloperCredit />
+            <span aria-hidden="true"> · </span>
+            <Link :href="privacy()" class="hover:text-foreground"
+                >Privacy policy</Link
+            >
         </footer>
     </div>
 </template>
