@@ -27,16 +27,8 @@ defineOptions({
 });
 
 const choosingTemplate = ref(false);
-const importing = ref(false);
-const selectedImportTemplate = ref('');
 
 function createResume(template: string) {
-    if (importing.value) {
-        selectedImportTemplate.value = template;
-        choosingTemplate.value = false;
-        chooseCv();
-        return;
-    }
     router.post(store().url, { template });
 }
 
@@ -57,9 +49,8 @@ function formatDate(iso: string) {
 }
 
 const cvInput = ref<HTMLInputElement | null>(null);
-const importForm = useForm<{ cv: File | null; template: string }>({
+const importForm = useForm<{ cv: File | null }>({
     cv: null,
-    template: '',
 });
 
 function chooseCv() {
@@ -74,7 +65,6 @@ function importResume(event: Event) {
     }
 
     importForm.cv = file;
-    importForm.template = selectedImportTemplate.value;
     importForm.post(importCv().url, {
         onFinish: () => {
             importForm.reset();
@@ -115,22 +105,13 @@ function importResume(event: Event) {
                 <Button
                     variant="outline"
                     :disabled="importForm.processing"
-                    @click="
-                        importing = true;
-                        choosingTemplate = true;
-                    "
+                    @click="chooseCv"
                 >
                     {{
                         importForm.processing ? 'Reading your CV…' : 'Import CV'
                     }}
                 </Button>
-                <Button
-                    @click="
-                        importing = false;
-                        choosingTemplate = true;
-                    "
-                    >+ New Resume</Button
-                >
+                <Button @click="choosingTemplate = true">+ New Resume</Button>
             </div>
         </div>
 

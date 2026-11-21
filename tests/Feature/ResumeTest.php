@@ -299,6 +299,27 @@ test('import rejects unsupported files', function () {
 
     expect($user->resumes()->count())->toBe(0);
 });
+
+test('an imported cv uses the default template when none is selected', function () {
+    $word = new PhpWord;
+    $section = $word->addSection();
+    $section->addText('Asha Naik');
+    $section->addText('asha@example.com');
+    $section->addText('Skills');
+    $section->addText('PHP, Laravel');
+    $path = sys_get_temp_dir().'/cv-test-'.uniqid().'.docx';
+    IOFactory::createWriter($word, 'Word2007')->save($path);
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->post(route('resumes.import'), [
+        'cv' => new UploadedFile($path, 'cv.docx', null, null, true),
+    ]);
+
+    $resume = $user->resumes()->firstOrFail();
+    $response->assertRedirect(route('resumes.edit', $resume));
+    expect($resume->template)->toBe(config('resume.default_template'))
+        ->and($resume->data['personal']['full_name'])->toBe('Asha Naik');
+});
 function twoTonePortrait(): UploadedFile
 {
     // 400x800: top half red, bottom half blue.
