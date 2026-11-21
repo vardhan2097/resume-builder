@@ -25,7 +25,7 @@ const emit = defineEmits<{
 const open = defineModel<boolean>('open', { required: true });
 
 // Size of the square viewport in CSS pixels.
-const FRAME = 280;
+const FRAME = 256;
 const MAX_ZOOM = 4;
 
 const natural = reactive({ width: 0, height: 0 });
@@ -151,7 +151,9 @@ watch(
 
 <template>
     <Dialog :open="open" @update:open="onOpenChange">
-        <DialogContent class="sm:max-w-md">
+        <DialogContent
+            class="max-h-[calc(100dvh-2rem)] overflow-y-auto p-3 sm:max-w-md sm:p-6"
+        >
             <DialogHeader>
                 <DialogTitle>Frame your photo</DialogTitle>
                 <DialogDescription

@@ -23,6 +23,27 @@ test('user can create a resume', function () {
     $response->assertRedirect(route('resumes.edit', $resume));
 });
 
+test('a selected template is used for a new empty resume', function () {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->post(route('resumes.store'), ['template' => 'banner']);
+
+    $resume = $user->resumes()->firstOrFail();
+    $response->assertRedirect(route('resumes.edit', $resume));
+    expect($resume->template)->toBe('banner')
+        ->and($resume->color)->toBe(config('resume.templates.banner.palettes.0'))
+        ->and($resume->data['personal']['full_name'])->toBe('');
+});
+
+test('an unknown template cannot be selected for a new resume', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->post(route('resumes.store'), ['template' => 'unknown'])
+        ->assertSessionHasErrors('template');
+
+    expect($user->resumes()->count())->toBe(0);
+});
+
 test('user cannot open another users resume', function () {
     $owner = User::factory()->create();
     $resume = $owner->resumes()->create(['title' => 'Private']);
@@ -255,13 +276,15 @@ test('user can import a docx cv', function () {
 
     $response = $this->actingAs($user)->post(route('resumes.import'), [
         'cv' => new UploadedFile($path, 'cv.docx', null, null, true),
+        'template' => 'banner',
     ]);
 
     $resume = $user->resumes()->first();
 
     expect($resume)->not->toBeNull();
     $response->assertRedirect(route('resumes.edit', $resume));
-    expect($resume->data['personal']['full_name'])->toBe('Asha Naik')
+    expect($resume->template)->toBe('banner')
+        ->and($resume->data['personal']['full_name'])->toBe('Asha Naik')
         ->and(array_column($resume->data['skills'], 'name'))->toBe(['PHP', 'Laravel', 'MySQL']);
 });
 

@@ -11,7 +11,7 @@
     $projects = F::filled($data['projects'], 'name');
     $certifications = F::filled($data['certifications'], 'name');
     $references = F::filled($data['references'], 'name');
-    $contacts = F::strings([$p['phone'], $p['email'], $p['location'], $p['website'], $p['linkedin'], $p['github']]);
+    $contacts = array_map(fn ($contact) => in_array($contact[0], ['nationality', 'date_of_birth']) ? $contact[2].': '.$contact[1] : $contact[1], F::contacts($p));
 @endphp
 <!DOCTYPE html>
 <html lang="en">
@@ -78,7 +78,7 @@
             @endif
         </td>
         <td style="vertical-align: middle;">
-            <h1 class="name">{{ $p['full_name'] ?: 'Your Name' }}</h1>
+            <h1 class="name">{{ $p['full_name'] }}</h1>
             @if ($p['job_title'])
                 <div class="role">{{ $p['job_title'] }}</div>
             @endif

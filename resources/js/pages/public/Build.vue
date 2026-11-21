@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
+import { useEventListener } from '@vueuse/core';
+import { FileText } from '@lucide/vue';
 import {
     docx,
     importMethod as importCv,
@@ -11,6 +13,8 @@ import ContentSections from '@/components/resume/ContentSections.vue';
 import DesignSection from '@/components/resume/DesignSection.vue';
 import SectionOrder from '@/components/resume/SectionOrder.vue';
 import ResumePreview from '@/components/resume/ResumePreview.vue';
+import TemplateGallery from '@/components/resume/TemplateGallery.vue';
+import ValidationSummary from '@/components/resume/ValidationSummary.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -20,6 +24,7 @@ import {
 } from '@/composables/useGuestResume';
 import { downloadPost, HttpError, post } from '@/lib/http';
 import type { RequestErrors } from '@/lib/http';
+import { focusError, highlightErrors } from '@/lib/validation';
 import { login, register } from '@/routes';
 import type { GuestResume, ResumeData, TemplateMeta } from '@/types/resume';
 
@@ -29,19 +34,63 @@ const props = defineProps<{
 }>();
 
 const { resume, reset } = useGuestResume(props.defaults);
+const choosingTemplate = ref(
+    !hasContent(resume.data) && !resume.data.settings.hidden_sections?.length,
+);
+const comparingTemplates = ref(false);
+const mobilePreviewOpen = ref(false);
+useEventListener(window, 'keydown', (event: KeyboardEvent) => {
+    if (event.key === 'Escape') mobilePreviewOpen.value = false;
+});
+
+function selectTemplate(template: string) {
+    resume.template = template;
+    if (!comparingTemplates.value) {
+        resume.color =
+            props.templates[template]?.palettes[0] ?? props.defaults.color;
+    }
+    choosingTemplate.value = false;
+    comparingTemplates.value = false;
+}
 
 const busy = ref<'pdf' | 'docx' | 'import' | null>(null);
 const errors = ref<RequestErrors>({});
 const message = ref('');
 const cvInput = ref<HTMLInputElement | null>(null);
 
-function showError(error: unknown) {
-    if (error instanceof HttpError) {
+watch(
+    errors,
+    (value) => {
+        void highlightErrors(value);
+    },
+    { deep: true, flush: 'post' },
+);
+
+function clearFieldError(event: Event) {
+    const field = (event.target as HTMLElement).dataset.field;
+    if (field && errors.value[field]) delete errors.value[field];
+}
+
+function showError(error: unknown, context: 'download' | 'import') {
+    if (
+        context === 'download' &&
+        error instanceof HttpError &&
+        error.status === 422 &&
+        Object.keys(error.errors).length
+    ) {
         errors.value = error.errors;
-        message.value = Object.keys(error.errors).length ? '' : error.message;
+        message.value = '';
+        void focusError(Object.keys(error.errors)[0]);
     } else {
         console.error(error);
-        message.value = 'Something went wrong. Please try again.';
+        message.value =
+            error instanceof HttpError &&
+            (error.status === 429 ||
+                (context === 'import' && error.status === 422))
+                ? error.message
+                : context === 'download'
+                  ? 'We could not prepare your download. Please try again.'
+                  : 'We could not import your CV. Please try again.';
     }
 }
 
@@ -53,7 +102,7 @@ async function download(kind: 'pdf' | 'docx') {
     try {
         await downloadPost(kind === 'pdf' ? pdf().url : docx().url, resume);
     } catch (error) {
-        showError(error);
+        showError(error, 'download');
     } finally {
         busy.value = null;
     }
@@ -88,7 +137,7 @@ async function importResume(event: Event) {
 
         resume.data = withDefaults(data, props.defaults.data);
     } catch (error) {
-        showError(error);
+        showError(error, 'import');
     } finally {
         busy.value = null;
     }
@@ -97,6 +146,8 @@ async function importResume(event: Event) {
 function startOver() {
     if (confirm('Clear everything and start a new resume?')) {
         reset();
+        comparingTemplates.value = false;
+        choosingTemplate.value = true;
     }
 }
 </script>
@@ -104,7 +155,23 @@ function startOver() {
 <template>
     <Head title="Build your resume" />
 
+    <TemplateGallery
+        v-if="choosingTemplate"
+        :templates="templates"
+        :defaults="defaults.data"
+        :content="comparingTemplates ? resume.data : undefined"
+        :color="comparingTemplates ? resume.color : undefined"
+        :can-cancel="comparingTemplates"
+        @cancel="
+            choosingTemplate = false;
+            comparingTemplates = false;
+        "
+        @select="selectTemplate"
+    />
     <div
+        v-else
+        @input="clearFieldError"
+        @change="clearFieldError"
         class="mx-auto grid w-full gap-6 p-4 lg:h-[calc(100dvh-5rem)] lg:min-h-0 lg:grid-cols-2 lg:overflow-hidden"
     >
         <div
@@ -129,6 +196,7 @@ function startOver() {
             >
                 <Input
                     v-model="resume.title"
+                    data-field="title"
                     class="min-w-40 flex-1 font-medium"
                 />
                 <Button
@@ -137,7 +205,7 @@ function startOver() {
                     :disabled="busy !== null"
                     @click="download('pdf')"
                 >
-                    {{ busy === 'pdf' ? 'Preparing…' : 'PDF' }}
+                    {{ busy === 'pdf' ? 'Preparing…' : 'Download PDF' }}
                 </Button>
                 <Button
                     type="button"
@@ -145,7 +213,7 @@ function startOver() {
                     :disabled="busy !== null"
                     @click="download('docx')"
                 >
-                    {{ busy === 'docx' ? 'Preparing…' : 'Word' }}
+                    {{ busy === 'docx' ? 'Preparing…' : 'Download Word' }}
                 </Button>
                 <Button as-child>
                     <Link :href="register()">Sign up to save</Link>
@@ -153,19 +221,16 @@ function startOver() {
             </div>
 
             <div
-                v-if="message || Object.keys(errors).length"
+                v-if="message"
                 class="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700"
             >
-                <p v-if="message">{{ message }}</p>
-                <template v-else>
-                    <p class="mb-1 font-medium">Please fix these:</p>
-                    <ul class="list-disc pl-5">
-                        <li v-for="(text, field) in errors" :key="field">
-                            {{ text }}
-                        </li>
-                    </ul>
-                </template>
+                <p>{{ message }}</p>
             </div>
+            <ValidationSummary
+                v-if="Object.keys(errors).length"
+                :errors="errors"
+                @select="focusError"
+            />
 
             <div class="flex flex-wrap gap-2">
                 <Button
@@ -202,6 +267,10 @@ function startOver() {
                 v-model:template="resume.template"
                 v-model:color="resume.color"
                 :templates="templates"
+                @change-template="
+                    comparingTemplates = true;
+                    choosingTemplate = true;
+                "
             />
 
             <SectionOrder
@@ -230,16 +299,48 @@ function startOver() {
                 </div>
             </section>
 
-            <ContentSections v-model="resume.data" />
+            <ContentSections
+                v-model="resume.data"
+                :error-fields="Object.keys(errors)"
+            />
+            <div
+                class="sticky bottom-4 z-30 self-end rounded-full border bg-background p-1 shadow-lg lg:hidden"
+            >
+                <Button
+                    type="button"
+                    class="rounded-full px-5"
+                    :aria-expanded="mobilePreviewOpen"
+                    aria-controls="mobile-resume-preview"
+                    @click="mobilePreviewOpen = true"
+                >
+                    <FileText class="h-4 w-4" aria-hidden="true" /> Preview
+                    resume
+                </Button>
+            </div>
         </div>
 
         <div
-            class="hidden lg:block lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain"
+            id="mobile-resume-preview"
+            :class="
+                mobilePreviewOpen
+                    ? 'visible scale-100 opacity-100'
+                    : 'pointer-events-none invisible scale-[0.12] opacity-0 lg:pointer-events-auto lg:visible lg:scale-100 lg:opacity-100'
+            "
+            class="fixed inset-0 z-50 flex origin-bottom-right flex-col gap-3 bg-background p-4 motion-safe:transition-[scale,opacity,visibility] motion-safe:duration-300 motion-safe:ease-out lg:static lg:z-auto lg:block lg:h-auto lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:bg-transparent lg:p-0 lg:transition-none"
             tabindex="0"
-            role="region"
+            :role="mobilePreviewOpen ? 'dialog' : 'region'"
+            :aria-modal="mobilePreviewOpen || undefined"
             aria-label="Resume preview"
         >
-            <div class="h-full min-h-0">
+            <Button
+                v-if="mobilePreviewOpen"
+                type="button"
+                variant="outline"
+                class="self-start lg:hidden"
+                @click="mobilePreviewOpen = false"
+                >← Back to editing</Button
+            >
+            <div class="min-h-0 flex-1 lg:h-full">
                 <ResumePreview
                     :url="preview().url"
                     :template="resume.template"

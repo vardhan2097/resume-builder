@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TemplateMeta } from '@/types/resume';
+import { Button } from '@/components/ui/button';
 
 defineProps<{
     templates: Record<string, TemplateMeta>;
@@ -7,6 +8,7 @@ defineProps<{
 
 const template = defineModel<string>('template', { required: true });
 const color = defineModel<string>('color', { required: true });
+const emit = defineEmits<{ changeTemplate: [] }>();
 </script>
 
 <template>
@@ -18,6 +20,7 @@ const color = defineModel<string>('color', { required: true });
                 <label class="text-sm font-medium">Template</label>
                 <select
                     v-model="template"
+                    data-field="template"
                     class="h-9 rounded-md border border-input bg-transparent px-2 text-sm"
                 >
                     <option
@@ -28,6 +31,12 @@ const color = defineModel<string>('color', { required: true });
                         {{ meta.name }}
                     </option>
                 </select>
+                <Button
+                    type="button"
+                    variant="outline"
+                    @click="emit('changeTemplate')"
+                    >Compare templates</Button
+                >
             </div>
 
             <div class="grid gap-2">
@@ -49,6 +58,7 @@ const color = defineModel<string>('color', { required: true });
                     />
                     <input
                         v-model="color"
+                        data-field="color"
                         type="color"
                         class="h-8 w-10 cursor-pointer rounded border"
                         aria-label="Custom colour"

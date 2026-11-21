@@ -4,6 +4,8 @@ export type Personal = {
     email: string;
     phone: string;
     location: string;
+    nationality: string;
+    date_of_birth: string;
     website: string;
     linkedin: string;
     github: string;
@@ -96,8 +98,11 @@ export type SectionKey =
     | 'hobbies'
     | 'references';
 
+export type HiddenSectionKey = SectionKey | 'summary';
+
 export type ResumeSettings = {
     page_break_before?: SectionKey[];
+    hidden_sections?: HiddenSectionKey[];
     /** Show the rating next to each item, per section. */
     show_levels: Record<LevelSectionKey, boolean>;
     /** Order of the sections on the resume and in the editor. */

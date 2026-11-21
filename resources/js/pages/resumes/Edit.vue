@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
 import { useEventListener, watchDebounced } from '@vueuse/core';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { FileText } from '@lucide/vue';
 import ContentSections from '@/components/resume/ContentSections.vue';
 import DesignSection from '@/components/resume/DesignSection.vue';
 import SectionOrder from '@/components/resume/SectionOrder.vue';
@@ -9,6 +10,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { docx, index, pdf, preview, update } from '@/routes/resumes';
 import ResumePreview from '@/components/resume/ResumePreview.vue';
+import TemplateGallery from '@/components/resume/TemplateGallery.vue';
+import ValidationSummary from '@/components/resume/ValidationSummary.vue';
+import { downloadGet, HttpError } from '@/lib/http';
+import type { RequestErrors } from '@/lib/http';
+import { focusError, highlightErrors } from '@/lib/validation';
 import type { Resume, TemplateMeta } from '@/types/resume';
 import PhotoSection from '@/components/resume/PhotoSection.vue';
 import { useUnsavedChangesGuard } from '@/composables/useUnsavedChangesGuard';
@@ -36,6 +42,47 @@ const AUTOSAVE_DELAY = 2000;
 
 const lastSavedAt = ref<Date | null>(null);
 const saveFailed = ref(false);
+const comparingTemplates = ref(false);
+const mobilePreviewOpen = ref(false);
+const validationErrors = ref<RequestErrors>({});
+const downloadMessage = ref('');
+const downloading = ref(false);
+
+watch(
+    validationErrors,
+    (value) => {
+        void highlightErrors(value);
+    },
+    { deep: true, flush: 'post' },
+);
+
+function clearFieldError(event: Event) {
+    const field = (event.target as HTMLElement).dataset.field;
+    if (field && validationErrors.value[field])
+        delete validationErrors.value[field];
+}
+
+function downloadFailure(error: unknown) {
+    downloading.value = false;
+    if (
+        error instanceof HttpError &&
+        error.status === 422 &&
+        Object.keys(error.errors).length
+    ) {
+        validationErrors.value = error.errors;
+        void focusError(Object.keys(error.errors)[0]);
+        return;
+    }
+    downloadMessage.value =
+        error instanceof HttpError && error.status === 429
+            ? error.message
+            : 'We could not prepare your download. Please try again.';
+}
+
+function selectTemplate(template: string) {
+    form.template = template;
+    comparingTemplates.value = false;
+}
 
 // A save requested while another is in flight runs once that one finishes.
 let queued = false;
@@ -69,20 +116,54 @@ function save(onSaved?: () => void) {
                 form.defaults(sent);
                 lastSavedAt.value = new Date();
                 saveFailed.value = false;
+                validationErrors.value = {};
 
-                const callback = afterSave;
-                afterSave = undefined;
-                callback?.();
+                if (JSON.stringify(form.data()) === JSON.stringify(sent)) {
+                    const callback = afterSave;
+                    afterSave = undefined;
+                    callback?.();
+                } else if (afterSave) {
+                    queued = true;
+                }
             },
-            onError: () => {
+            onError: (errors) => {
+                saveFailed.value = true;
+                validationErrors.value = errors as RequestErrors;
+                if (afterSave && Object.keys(errors).length) {
+                    void focusError(Object.keys(errors)[0]);
+                }
+                afterSave = undefined;
+                downloading.value = false;
+            },
+            onNetworkError: () => {
                 saveFailed.value = true;
                 afterSave = undefined;
+                downloading.value = false;
+                downloadMessage.value =
+                    'We could not save your changes. Check your connection and try again.';
+                return false;
+            },
+            onHttpException: () => {
+                saveFailed.value = true;
+                afterSave = undefined;
+                downloading.value = false;
+                downloadMessage.value =
+                    'We could not save your changes. Please try again.';
+                return false;
+            },
+            onCancel: () => {
+                if (afterSave) {
+                    afterSave = undefined;
+                    downloading.value = false;
+                    downloadMessage.value =
+                        'The save was interrupted. Please try your download again.';
+                }
             },
             onFinish: () => {
                 if (queued) {
                     queued = false;
 
-                    if (form.isDirty) {
+                    if (form.isDirty || afterSave) {
                         save();
                     }
                 }
@@ -102,6 +183,7 @@ watchDebounced(
 );
 
 useEventListener(window, 'keydown', (event: KeyboardEvent) => {
+    if (event.key === 'Escape') mobilePreviewOpen.value = false;
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
         event.preventDefault();
         save();
@@ -121,32 +203,60 @@ function download(kind: 'pdf' | 'docx') {
     const url =
         kind === 'pdf' ? pdf(props.resume.id).url : docx(props.resume.id).url;
 
+    validationErrors.value = {};
+    downloadMessage.value = '';
+    downloading.value = true;
+    const startDownload = () => {
+        void downloadGet(url)
+            .catch(downloadFailure)
+            .finally(() => {
+                downloading.value = false;
+            });
+    };
+
     if (!form.isDirty && !form.processing) {
-        window.location.href = url;
+        startDownload();
 
         return;
     }
 
-    save(() => {
-        window.location.href = url;
-    });
+    save(startDownload);
 }
 </script>
 
 <template>
     <Head :title="form.title || 'Edit resume'" />
 
+    <TemplateGallery
+        v-if="comparingTemplates"
+        :templates="templates"
+        :defaults="form.content"
+        :content="form.content"
+        :color="form.color"
+        :preview-url="preview(resume.id).url"
+        can-cancel
+        @cancel="comparingTemplates = false"
+        @select="selectTemplate"
+    />
     <div
+        v-else
         class="grid gap-6 p-4 lg:h-[calc(100dvh-5rem)] lg:min-h-0 lg:grid-cols-2 lg:overflow-hidden"
     >
         <form
+            novalidate
+            @input="clearFieldError"
+            @change="clearFieldError"
             class="flex flex-col gap-6 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-2"
             @submit.prevent="save()"
         >
             <div
-                class="sticky top-0 z-10 flex items-center gap-3 rounded-xl border bg-background p-3"
+                class="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-xl border bg-background p-3"
             >
-                <Input v-model="form.title" class="font-medium" />
+                <Input
+                    v-model="form.title"
+                    data-field="title"
+                    class="min-w-40 flex-1 font-medium"
+                />
                 <span
                     class="text-sm whitespace-nowrap"
                     :class="{
@@ -160,8 +270,12 @@ function download(kind: 'pdf' | 'docx') {
                     aria-live="polite"
                 >
                     <template v-if="form.processing">Saving…</template>
-                    <template v-else-if="saveFailed">Not saved</template>
-                    <template v-else-if="form.isDirty">Unsaved</template>
+                    <template v-else-if="saveFailed"
+                        >Changes not saved</template
+                    >
+                    <template v-else-if="form.isDirty"
+                        >Unsaved changes</template
+                    >
                     <template v-else-if="savedTime"
                         >Saved {{ savedTime }} ✓</template
                     >
@@ -177,39 +291,39 @@ function download(kind: 'pdf' | 'docx') {
                 <Button
                     type="button"
                     variant="outline"
-                    :disabled="form.processing"
+                    :disabled="form.processing || downloading"
                     @click="download('pdf')"
                 >
-                    PDF
+                    Download PDF
                 </Button>
                 <Button
                     type="button"
                     variant="outline"
-                    :disabled="form.processing"
+                    :disabled="form.processing || downloading"
                     @click="download('docx')"
                 >
-                    Word
+                    Download Word
                 </Button>
             </div>
 
-            <div
-                v-if="Object.keys(form.errors).length"
+            <p
+                v-if="downloadMessage"
+                role="alert"
                 class="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700"
             >
-                <p class="mb-1 font-medium">
-                    Your changes aren't saved yet. Please fix these:
-                </p>
-                <ul class="list-disc pl-5">
-                    <li v-for="(message, field) in form.errors" :key="field">
-                        {{ message }}
-                    </li>
-                </ul>
-            </div>
+                {{ downloadMessage }}
+            </p>
+            <ValidationSummary
+                v-if="Object.keys(validationErrors).length"
+                :errors="validationErrors"
+                @select="focusError"
+            />
 
             <DesignSection
                 v-model:template="form.template"
                 v-model:color="form.color"
                 :templates="templates"
+                @change-template="comparingTemplates = true"
             />
 
             <SectionOrder
@@ -232,16 +346,48 @@ function download(kind: 'pdf' | 'docx') {
                 "
             />
 
-            <ContentSections v-model="form.content" />
+            <ContentSections
+                v-model="form.content"
+                :error-fields="Object.keys(validationErrors)"
+            />
+            <div
+                class="sticky bottom-4 z-30 self-end rounded-full border bg-background p-1 shadow-lg lg:hidden"
+            >
+                <Button
+                    type="button"
+                    class="rounded-full px-5"
+                    :aria-expanded="mobilePreviewOpen"
+                    aria-controls="mobile-resume-preview"
+                    @click="mobilePreviewOpen = true"
+                >
+                    <FileText class="h-4 w-4" aria-hidden="true" /> Preview
+                    resume
+                </Button>
+            </div>
         </form>
 
         <div
-            class="hidden lg:block lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain"
+            id="mobile-resume-preview"
+            :class="
+                mobilePreviewOpen
+                    ? 'visible scale-100 opacity-100'
+                    : 'pointer-events-none invisible scale-[0.12] opacity-0 lg:pointer-events-auto lg:visible lg:scale-100 lg:opacity-100'
+            "
+            class="fixed inset-0 z-50 flex origin-bottom-right flex-col gap-3 bg-background p-4 motion-safe:transition-[scale,opacity,visibility] motion-safe:duration-300 motion-safe:ease-out lg:static lg:z-auto lg:block lg:h-auto lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:bg-transparent lg:p-0 lg:transition-none"
             tabindex="0"
-            role="region"
+            :role="mobilePreviewOpen ? 'dialog' : 'region'"
+            :aria-modal="mobilePreviewOpen || undefined"
             aria-label="Resume preview"
         >
-            <div class="h-full min-h-0">
+            <Button
+                v-if="mobilePreviewOpen"
+                type="button"
+                variant="outline"
+                class="self-start lg:hidden"
+                @click="mobilePreviewOpen = false"
+                >← Back to editing</Button
+            >
+            <div class="min-h-0 flex-1 lg:h-full">
                 <ResumePreview
                     :url="preview(resume.id).url"
                     :template="form.template"

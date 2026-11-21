@@ -94,6 +94,11 @@ class ResumeFormat
         $order = Resume::SECTIONS;
         usort($order, fn (string $a, string $b) => ($rank[$a] ?? PHP_INT_MAX) <=> ($rank[$b] ?? PHP_INT_MAX));
 
+        $hidden = $data['settings']['hidden_sections'] ?? [];
+        if (is_array($hidden)) {
+            $order = array_values(array_diff($order, $hidden));
+        }
+
         return $only === null ? $order : array_values(array_intersect($order, $only));
     }
 
@@ -135,7 +140,7 @@ class ResumeFormat
         $words = preg_split('/\s+/', trim((string) $name), -1, PREG_SPLIT_NO_EMPTY) ?: [];
         $letters = array_map(fn ($word) => mb_substr($word, 0, 1), array_slice($words, 0, 2));
 
-        return mb_strtoupper(implode('', $letters)) ?: 'CV';
+        return mb_strtoupper(implode('', $letters));
     }
 
     /**
@@ -174,6 +179,8 @@ class ResumeFormat
             'phone' => 'Phone',
             'email' => 'Email',
             'location' => 'Address',
+            'nationality' => 'Nationality',
+            'date_of_birth' => 'Date of birth',
             'website' => 'Website',
             'linkedin' => 'LinkedIn',
             'github' => 'GitHub',

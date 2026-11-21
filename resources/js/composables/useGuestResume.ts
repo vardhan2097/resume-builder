@@ -38,7 +38,10 @@ function read(): GuestResume | null {
 }
 
 function write(resume: GuestResume): void {
-    if (!hasContent(resume.data)) {
+    if (
+        !hasContent(resume.data) &&
+        !resume.data.settings.hidden_sections?.length
+    ) {
         clearGuestResume();
 
         return;

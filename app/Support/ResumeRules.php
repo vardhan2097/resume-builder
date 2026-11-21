@@ -23,12 +23,14 @@ class ResumeRules
 
             'data' => ['required', 'array:personal,experience,education,skills,tools,projects,languages,certifications,hobbies,references,settings'],
 
-            'data.personal' => ['required', 'array:full_name,job_title,email,phone,location,website,linkedin,github,summary'],
+            'data.personal' => ['required', 'array:full_name,job_title,email,phone,location,nationality,date_of_birth,website,linkedin,github,summary'],
             'data.personal.full_name' => ['nullable', 'string', 'max:100'],
             'data.personal.job_title' => ['nullable', 'string', 'max:100'],
             'data.personal.email' => ['nullable', 'email', 'max:150'],
             'data.personal.phone' => ['nullable', 'string', 'max:30'],
             'data.personal.location' => ['nullable', 'string', 'max:150'],
+            'data.personal.nationality' => ['nullable', 'string', 'max:100'],
+            'data.personal.date_of_birth' => ['nullable', 'date_format:Y-m-d'],
             'data.personal.website' => ['nullable', 'url', 'max:200'],
             'data.personal.linkedin' => ['nullable', 'url', 'max:200'],
             'data.personal.github' => ['nullable', 'url', 'max:200'],
@@ -94,13 +96,15 @@ class ResumeRules
             'data.references.*.email' => ['nullable', 'email', 'max:150'],
 
             // Optional so data saved before settings existed is still accepted.
-            'data.settings' => ['sometimes', 'array:show_levels,section_order,page_break_before'],
+            'data.settings' => ['sometimes', 'array:show_levels,section_order,page_break_before,hidden_sections'],
             'data.settings.show_levels' => ['sometimes', 'array:skills,tools,languages'],
             'data.settings.show_levels.*' => ['boolean'],
             'data.settings.page_break_before' => ['sometimes', 'array', 'max:'.count(Resume::SECTIONS)],
             'data.settings.page_break_before.*' => ['string', 'distinct', 'in:'.implode(',', Resume::SECTIONS)],
             'data.settings.section_order' => ['sometimes', 'array', 'max:'.count(Resume::SECTIONS)],
             'data.settings.section_order.*' => ['string', 'distinct', 'in:'.implode(',', Resume::SECTIONS)],
+            'data.settings.hidden_sections' => ['sometimes', 'array', 'max:'.(count(Resume::SECTIONS) + 1)],
+            'data.settings.hidden_sections.*' => ['string', 'distinct', 'in:'.implode(',', [...Resume::SECTIONS, 'summary'])],
         ];
 
         foreach (['experience', 'education', 'projects', 'certifications', 'references'] as $section) {
@@ -112,7 +116,7 @@ class ResumeRules
         }
 
         return array_map(fn (array $field) => array_map(
-            fn (string $rule) => in_array($rule, ['email', 'url'], true) || str_starts_with($rule, 'regex:') ? 'string' : $rule,
+            fn (string $rule) => in_array($rule, ['email', 'url'], true) || str_starts_with($rule, 'regex:') || str_starts_with($rule, 'date_format:') ? 'string' : $rule,
             $field,
         ), $rules);
     }

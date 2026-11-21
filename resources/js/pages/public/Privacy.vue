@@ -11,7 +11,10 @@ const props = defineProps<{
 }>();
 
 const graceDays = computed(() => props.deleteAfterDays - props.warnAfterDays);
-const LAST_UPDATED = '28 October 2026';
+const hasContact = computed(
+    () => !!props.contactEmail && !props.contactEmail.endsWith('@example.com'),
+);
+const LAST_UPDATED = '22 November 2026';
 </script>
 
 <template>
@@ -24,10 +27,8 @@ const LAST_UPDATED = '28 October 2026';
         <p class="text-muted-foreground">Last updated: {{ LAST_UPDATED }}</p>
 
         <p>
-            This page explains, in plain language, what information this resume
-            builder keeps about you, why, and how to get it removed. We aim to
-            handle your data in line with India's Digital Personal Data
-            Protection Act, 2023 (DPDP Act).
+            This page explains what information miResume.in uses, why we use it,
+            and the choices you have about it.
         </p>
 
         <h2>What we store</h2>
@@ -37,14 +38,16 @@ const LAST_UPDATED = '28 October 2026';
                 securely hashed password (we can't see your password).
             </li>
             <li>
-                <strong>Your resumes:</strong> everything you type into the
-                editor, plus the template and colour you pick.
+                <strong>Your resumes:</strong> the information you enter, such
+                as your contact details, work history, education and references,
+                plus your chosen template and settings. Nationality and date of
+                birth are optional.
             </li>
             <li>
                 <strong>Your photo</strong>, if you add one: a resized copy for
                 your resume and a larger copy so you can re-frame it later.
-                Photos are stored privately and are only shown to you and in the
-                files you download.
+                Photos are stored privately for use in your previews and
+                downloads.
             </li>
             <li>
                 <strong>When you were last active</strong>, so we can delete
@@ -52,24 +55,30 @@ const LAST_UPDATED = '28 October 2026';
             </li>
         </ul>
 
-        <h2>What we don't store</h2>
+        <h2>Guest resumes and uploaded files</h2>
         <ul>
             <li>
                 <strong>Uploaded CV files.</strong> When you import a CV we read
-                the text, turn it into resume sections and then discard the
-                file. Only the text you keep in your resume is saved.
+                the text from a temporary upload and turn it into resume
+                sections. The uploaded file is not kept as part of your saved
+                resume. The extracted information is handled like other resume
+                information you enter.
             </li>
             <li>
                 <strong>Resumes built without an account.</strong> If you use
                 the
                 <Link :href="build()" class="underline">builder</Link>
-                without signing up, your resume stays in your own browser. Our
-                server only uses it briefly to draw the preview or create your
-                download, and doesn't save it.
+                without signing up, your draft is saved in your browser's local
+                storage. It is sent to our server to create previews and
+                downloads. If you sign up or log in, the draft may be saved to
+                your account. You can clear a guest draft with “Start over” or
+                your browser's site-data controls.
             </li>
             <li>
-                <strong>No ads or tracking.</strong> We don't use advertising or
-                analytics cookies, and we don't sell or share your data.
+                <strong>Downloads.</strong> We create PDF and Word files using
+                the information in your resume. Word files are temporarily
+                created on the server for delivery. Copies you download are
+                stored on your device under your control.
             </li>
         </ul>
 
@@ -84,18 +93,19 @@ const LAST_UPDATED = '28 October 2026';
 
         <h2>Cookies</h2>
         <p>
-            We use only the cookies the site needs to work: one to keep you
-            logged in (plus one more if you tick “Remember me”), one to protect
-            forms against forgery, and two that remember your light/dark
-            appearance and whether the sidebar is open.
+            We use cookies for sessions, login, security, appearance and sidebar
+            preferences. Guest drafts are stored separately in your browser's
+            local storage. The application does not include advertising or
+            analytics cookies.
         </p>
 
         <h2>Where your data is kept</h2>
         <p>
-            Your data is stored on servers rented from our web hosting provider
-            (Hostinger). Our server may briefly record technical details such as
-            your IP address to keep the service secure and to limit abuse (for
-            example, too many requests in a minute).
+            Account data is stored on our hosting infrastructure. Hosting and
+            email providers may process information needed to operate the
+            service and deliver account emails. Technical details such as your
+            IP address may be processed for security, troubleshooting and
+            limiting abuse. We do not sell your personal data.
         </p>
 
         <h2>How long we keep it</h2>
@@ -105,18 +115,19 @@ const LAST_UPDATED = '28 October 2026';
                 delete them.
             </li>
             <li>
-                If you don't log in for {{ warnAfterDays }} days, we email you
-                to say your account will be deleted in {{ graceDays }} days.
-                Logging in at any time before then cancels this.
+                After {{ warnAfterDays }} days without account activity, we aim
+                to email you a deletion warning. Using your account before
+                deletion cancels the warning.
             </li>
             <li>
-                After {{ deleteAfterDays }} days without activity (and at least
-                {{ graceDays }} days after that email), your account, resumes
-                and photos are permanently deleted.
+                After at least {{ deleteAfterDays }} days without activity and
+                {{ graceDays }} days after the warning, the scheduled cleanup
+                can delete your account, resumes and photos. Timing depends on
+                the cleanup schedule and successfully sending the warning.
             </li>
             <li>
-                Our host's routine backups may hold a copy for a limited time
-                before they are overwritten.
+                Backups and technical logs, where maintained, may retain
+                information after deletion according to their retention cycles.
             </li>
         </ul>
 
@@ -132,13 +143,13 @@ const LAST_UPDATED = '28 October 2026';
             <li>
                 <strong>Delete</strong> any resume from My Resumes, or delete
                 your whole account from your profile settings. Deleting your
-                account removes your resumes and photos straight away.
+                account removes its saved resumes and photos. It does not remove
+                files downloaded to your device or drafts in browser storage.
             </li>
             <li>
                 <strong>Ask us</strong> for a summary of the data we hold about
                 you, or raise a concern or complaint, using the contact below.
-                Under the DPDP Act you may also approach the Data Protection
-                Board of India if you are not satisfied with our response.
+                You may also have rights under applicable privacy law.
             </li>
         </ul>
 
@@ -150,11 +161,16 @@ const LAST_UPDATED = '28 October 2026';
 
         <h2>Contact</h2>
         <p>
-            For privacy questions, data requests or complaints, email
-            <a :href="`mailto:${contactEmail}`" class="underline">{{
-                contactEmail
-            }}</a
-            >. We'll reply as soon as we can.
+            <template v-if="hasContact">
+                For privacy questions, data requests or complaints, email
+                <a :href="`mailto:${contactEmail}`" class="underline">{{
+                    contactEmail
+                }}</a
+                >. We'll reply as soon as we can.
+            </template>
+            <template v-else>
+                A privacy contact has not yet been configured.
+            </template>
         </p>
 
         <h2>Changes to this policy</h2>

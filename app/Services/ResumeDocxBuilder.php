@@ -21,6 +21,9 @@ class ResumeDocxBuilder
 
         $data = Resume::withDefaults($resume->data);
         $p = $data['personal'];
+        if (in_array('summary', $data['settings']['hidden_sections'] ?? [], true)) {
+            $p['summary'] = '';
+        }
 
         $this->color = preg_match('/^#[0-9a-fA-F]{6}$/', (string) $resume->color)
             ? ltrim($resume->color, '#')
@@ -81,7 +84,7 @@ class ResumeDocxBuilder
     private function header(Section $section, array $p): void
     {
         $section->addText(
-            (string) ($p['full_name'] ?: 'Your Name'),
+            (string) $p['full_name'],
             ['size' => 24, 'bold' => true, 'color' => '111827'],
             ['spaceAfter' => 0]
         );
@@ -94,7 +97,7 @@ class ResumeDocxBuilder
             );
         }
 
-        $contacts = F::strings([$p['phone'], $p['email'], $p['location'], $p['website'], $p['linkedin'], $p['github']]);
+        $contacts = array_map(fn ($contact) => in_array($contact[0], ['nationality', 'date_of_birth']) ? $contact[2].': '.$contact[1] : $contact[1], F::contacts($p));
 
         if ($contacts) {
             $section->addText(implode('  |  ', $contacts), ['size' => 9, 'color' => '4B5563']);

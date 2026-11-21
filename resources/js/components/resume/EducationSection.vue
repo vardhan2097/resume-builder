@@ -20,42 +20,64 @@ const blank = () => ({
 
 <template>
     <RepeatableSection v-model="items" title="Education" :make-item="blank">
-        <template #default="{ item }">
+        <template #default="{ item, index }">
             <div class="grid gap-4 sm:grid-cols-2">
                 <div class="grid gap-2">
                     <Label>Degree / Course</Label>
                     <Input
                         v-model="item.degree"
+                        :data-field="`data.education.${index}.degree`"
                         placeholder="e.g. B.Sc. Computer Science"
                     />
                 </div>
                 <div class="grid gap-2">
                     <Label>Institution</Label>
-                    <Input v-model="item.institution" />
+                    <Input
+                        v-model="item.institution"
+                        :data-field="`data.education.${index}.institution`"
+                        placeholder="e.g. Pune University"
+                    />
                 </div>
                 <div class="grid gap-2">
                     <Label>Location</Label>
-                    <Input v-model="item.location" />
+                    <Input
+                        v-model="item.location"
+                        :data-field="`data.education.${index}.location`"
+                        placeholder="e.g. Pune"
+                    />
                 </div>
                 <div class="grid gap-2">
                     <Label>Score</Label>
                     <Input
                         v-model="item.score"
+                        :data-field="`data.education.${index}.score`"
                         placeholder="e.g. CGPA 8.2 / 75%"
                     />
                 </div>
                 <div class="grid gap-2">
                     <Label>Start</Label>
-                    <Input type="month" v-model="item.start_date" />
+                    <Input
+                        type="month"
+                        v-model="item.start_date"
+                        :data-field="`data.education.${index}.start_date`"
+                    />
                 </div>
                 <div class="grid gap-2">
                     <Label>End</Label>
-                    <Input type="month" v-model="item.end_date" />
+                    <Input
+                        type="month"
+                        v-model="item.end_date"
+                        :data-field="`data.education.${index}.end_date`"
+                    />
                 </div>
             </div>
             <div class="grid gap-2">
                 <Label>Details (optional, one point per line)</Label>
-                <FieldTextarea v-model="item.description" />
+                <FieldTextarea
+                    v-model="item.description"
+                    :data-field="`data.education.${index}.description`"
+                    placeholder="Describe relevant coursework or achievements"
+                />
             </div>
         </template>
     </RepeatableSection>

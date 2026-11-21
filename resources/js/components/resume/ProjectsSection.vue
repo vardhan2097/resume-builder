@@ -13,16 +13,21 @@ const linkPlaceholder = 'https://';
 
 <template>
     <RepeatableSection v-model="items" title="Projects" :make-item="blank">
-        <template #default="{ item }">
+        <template #default="{ item, index }">
             <div class="grid gap-4 sm:grid-cols-2">
                 <div class="grid gap-2">
                     <Label>Project name</Label>
-                    <Input v-model="item.name" />
+                    <Input
+                        v-model="item.name"
+                        :data-field="`data.projects.${index}.name`"
+                        placeholder="e.g. Customer onboarding"
+                    />
                 </div>
                 <div class="grid gap-2">
                     <Label>Duration</Label>
                     <Input
                         v-model="item.duration"
+                        :data-field="`data.projects.${index}.duration`"
                         placeholder="e.g. 3 months"
                     />
                 </div>
@@ -31,13 +36,19 @@ const linkPlaceholder = 'https://';
                     <Input
                         type="url"
                         v-model="item.link"
+                        :data-field="`data.projects.${index}.link`"
                         :placeholder="linkPlaceholder"
                     />
                 </div>
             </div>
             <div class="grid gap-2">
                 <Label>Description (one point per line)</Label>
-                <FieldTextarea v-model="item.description" :rows="4" />
+                <FieldTextarea
+                    v-model="item.description"
+                    :data-field="`data.projects.${index}.description`"
+                    :rows="4"
+                    placeholder="Describe the project and your contribution"
+                />
             </div>
         </template>
     </RepeatableSection>

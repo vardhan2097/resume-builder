@@ -12,7 +12,9 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use Intervention\Image\Drivers\Gd\Driver;
@@ -32,13 +34,23 @@ class ResumeController extends Controller
 
         return Inertia::render('resumes/Index', [
             'resumes' => $resumes,
+            'templates' => config('resume.templates'),
+            'defaults' => Resume::defaultData(),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
+        $validated = $request->validate([
+            'template' => ['sometimes', 'string', Rule::in(array_keys(config('resume.templates')))],
+        ]);
+
         $resume = $request->user()->resumes()->create([
             'title' => 'Untitled Resume',
+            ...$validated,
+            'color' => isset($validated['template'])
+                ? config('resume.templates.'.$validated['template'].'.palettes.0', config('resume.default_color'))
+                : config('resume.default_color'),
         ]);
 
         return redirect()->route('resumes.edit', $resume);
@@ -116,6 +128,8 @@ class ResumeController extends Controller
     {
         Gate::authorize('update', $resume);
 
+        $this->validateDownload($resume);
+
         return $downloads->pdf($resume);
     }
 
@@ -123,7 +137,19 @@ class ResumeController extends Controller
     {
         Gate::authorize('update', $resume);
 
+        $this->validateDownload($resume);
+
         return $downloads->docx($resume);
+    }
+
+    private function validateDownload(Resume $resume): void
+    {
+        Validator::make([
+            'title' => $resume->title,
+            'template' => $resume->template,
+            'color' => $resume->color,
+            'data' => Resume::withDefaults($resume->data),
+        ], ResumeRules::withTitle())->validate();
     }
 
     public function uploadPhoto(Request $request, Resume $resume): RedirectResponse

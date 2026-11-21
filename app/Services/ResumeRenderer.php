@@ -75,6 +75,9 @@ class ResumeRenderer
         }
 
         $data = Resume::withDefaults($data);
+        if (in_array('summary', $data['settings']['hidden_sections'] ?? [], true)) {
+            $data['personal']['summary'] = '';
+        }
 
         $photo = null;
 
