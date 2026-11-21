@@ -36,11 +36,17 @@ function restoreSection(key: HiddenSectionKey) {
 </script>
 
 <template>
-    <PersonalSection
-        v-model="content.personal"
-        :summary-hidden="hiddenSections.includes('summary')"
-        @hide-summary="hideSection('summary')"
-    />
+    <details open class="rounded-xl border">
+        <summary class="cursor-pointer px-5 py-4 font-semibold">
+            Personal details
+        </summary>
+        <PersonalSection
+            class="border-0"
+            v-model="content.personal"
+            :summary-hidden="hiddenSections.includes('summary')"
+            @hide-summary="hideSection('summary')"
+        />
+    </details>
 
     <section v-if="hiddenSections.length" class="rounded-xl border p-5">
         <h2 class="mb-3 text-lg font-semibold">Hidden sections</h2>
@@ -61,63 +67,74 @@ function restoreSection(key: HiddenSectionKey) {
 
     <template v-for="key in order" :key="key">
         <div v-if="!hiddenSections.includes(key)" class="relative">
-            <div class="mb-2 flex justify-end">
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    @click="hideSection(key)"
-                    >Hide {{ SECTION_LABELS[key] }}</Button
-                >
-            </div>
-            <ExperienceSection
-                v-if="key === 'experience'"
-                v-model="content.experience"
-            />
-            <EducationSection
-                v-else-if="key === 'education'"
-                v-model="content.education"
-            />
-            <LevelSection
-                v-else-if="key === 'skills'"
-                v-model="content.skills"
-                v-model:show-levels="content.settings.show_levels.skills"
-                :max="40"
-                title="Skills"
-                placeholder="e.g. Laravel"
-            />
-            <LevelSection
-                v-else-if="key === 'tools'"
-                v-model="content.tools"
-                v-model:show-levels="content.settings.show_levels.tools"
-                :max="30"
-                title="Software / Tools"
-                placeholder="e.g. VS Code"
-            />
-            <ProjectsSection
-                v-else-if="key === 'projects'"
-                v-model="content.projects"
-            />
-            <CertificationsSection
-                v-else-if="key === 'certifications'"
-                v-model="content.certifications"
-            />
-            <LevelSection
-                v-else-if="key === 'languages'"
-                v-model="content.languages"
-                v-model:show-levels="content.settings.show_levels.languages"
-                :max="15"
-                title="Languages"
-                placeholder="e.g. English"
-            />
-            <HobbiesSection
-                v-else-if="key === 'hobbies'"
-                v-model="content.hobbies"
-            />
-            <ReferencesSection
-                v-else-if="key === 'references'"
-                v-model="content.references"
-            />
+            <details class="rounded-xl border">
+                <summary class="cursor-pointer px-5 py-4 font-semibold">
+                    {{ SECTION_LABELS[key] }}
+                    <span class="ml-2 text-sm font-normal text-muted-foreground"
+                        >{{ content[key].length }}
+                        {{
+                            content[key].length === 1 ? 'entry' : 'entries'
+                        }}</span
+                    >
+                </summary>
+                <ExperienceSection
+                    v-if="key === 'experience'"
+                    v-model="content.experience"
+                />
+                <EducationSection
+                    v-else-if="key === 'education'"
+                    v-model="content.education"
+                />
+                <LevelSection
+                    v-else-if="key === 'skills'"
+                    v-model="content.skills"
+                    v-model:show-levels="content.settings.show_levels.skills"
+                    :max="40"
+                    title="Skills"
+                    placeholder="e.g. Laravel"
+                />
+                <LevelSection
+                    v-else-if="key === 'tools'"
+                    v-model="content.tools"
+                    v-model:show-levels="content.settings.show_levels.tools"
+                    :max="30"
+                    title="Software / Tools"
+                    placeholder="e.g. VS Code"
+                />
+                <ProjectsSection
+                    v-else-if="key === 'projects'"
+                    v-model="content.projects"
+                />
+                <CertificationsSection
+                    v-else-if="key === 'certifications'"
+                    v-model="content.certifications"
+                />
+                <LevelSection
+                    v-else-if="key === 'languages'"
+                    v-model="content.languages"
+                    v-model:show-levels="content.settings.show_levels.languages"
+                    :max="15"
+                    title="Languages"
+                    placeholder="e.g. English"
+                />
+                <HobbiesSection
+                    v-else-if="key === 'hobbies'"
+                    v-model="content.hobbies"
+                />
+                <ReferencesSection
+                    v-else-if="key === 'references'"
+                    v-model="content.references"
+                />
+                <div class="flex justify-end px-5 pb-4">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        @click="hideSection(key)"
+                        >Hide {{ SECTION_LABELS[key] }}</Button
+                    >
+                </div>
+            </details>
         </div>
     </template>
 </template>

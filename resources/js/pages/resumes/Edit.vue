@@ -2,6 +2,7 @@
 import { Head, useForm } from '@inertiajs/vue3';
 import { useEventListener, watchDebounced } from '@vueuse/core';
 import { computed, ref } from 'vue';
+import { FileText } from '@lucide/vue';
 import ContentSections from '@/components/resume/ContentSections.vue';
 import DesignSection from '@/components/resume/DesignSection.vue';
 import SectionOrder from '@/components/resume/SectionOrder.vue';
@@ -38,6 +39,7 @@ const AUTOSAVE_DELAY = 2000;
 const lastSavedAt = ref<Date | null>(null);
 const saveFailed = ref(false);
 const comparingTemplates = ref(false);
+const mobilePreviewOpen = ref(false);
 
 function selectTemplate(template: string) {
     form.template = template;
@@ -109,6 +111,7 @@ watchDebounced(
 );
 
 useEventListener(window, 'keydown', (event: KeyboardEvent) => {
+    if (event.key === 'Escape') mobilePreviewOpen.value = false;
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
         event.preventDefault();
         save();
@@ -163,9 +166,12 @@ function download(kind: 'pdf' | 'docx') {
             @submit.prevent="save()"
         >
             <div
-                class="sticky top-0 z-10 flex items-center gap-3 rounded-xl border bg-background p-3"
+                class="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-xl border bg-background p-3"
             >
-                <Input v-model="form.title" class="font-medium" />
+                <Input
+                    v-model="form.title"
+                    class="min-w-40 flex-1 font-medium"
+                />
                 <span
                     class="text-sm whitespace-nowrap"
                     :class="{
@@ -179,8 +185,12 @@ function download(kind: 'pdf' | 'docx') {
                     aria-live="polite"
                 >
                     <template v-if="form.processing">Saving…</template>
-                    <template v-else-if="saveFailed">Not saved</template>
-                    <template v-else-if="form.isDirty">Unsaved</template>
+                    <template v-else-if="saveFailed"
+                        >Changes not saved</template
+                    >
+                    <template v-else-if="form.isDirty"
+                        >Unsaved changes</template
+                    >
                     <template v-else-if="savedTime"
                         >Saved {{ savedTime }} ✓</template
                     >
@@ -199,7 +209,7 @@ function download(kind: 'pdf' | 'docx') {
                     :disabled="form.processing"
                     @click="download('pdf')"
                 >
-                    PDF
+                    Download PDF
                 </Button>
                 <Button
                     type="button"
@@ -207,7 +217,7 @@ function download(kind: 'pdf' | 'docx') {
                     :disabled="form.processing"
                     @click="download('docx')"
                 >
-                    Word
+                    Download Word
                 </Button>
             </div>
 
@@ -253,15 +263,44 @@ function download(kind: 'pdf' | 'docx') {
             />
 
             <ContentSections v-model="form.content" />
+            <div
+                class="sticky bottom-4 z-30 self-end rounded-full border bg-background p-1 shadow-lg lg:hidden"
+            >
+                <Button
+                    type="button"
+                    class="rounded-full px-5"
+                    :aria-expanded="mobilePreviewOpen"
+                    aria-controls="mobile-resume-preview"
+                    @click="mobilePreviewOpen = true"
+                >
+                    <FileText class="h-4 w-4" aria-hidden="true" /> Preview
+                    resume
+                </Button>
+            </div>
         </form>
 
         <div
-            class="h-[650px] lg:block lg:h-auto lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain"
+            id="mobile-resume-preview"
+            :class="
+                mobilePreviewOpen
+                    ? 'visible scale-100 opacity-100'
+                    : 'pointer-events-none invisible scale-[0.12] opacity-0 lg:pointer-events-auto lg:visible lg:scale-100 lg:opacity-100'
+            "
+            class="fixed inset-0 z-50 flex origin-bottom-right flex-col gap-3 bg-background p-4 motion-safe:transition-[scale,opacity,visibility] motion-safe:duration-300 motion-safe:ease-out lg:static lg:z-auto lg:block lg:h-auto lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:bg-transparent lg:p-0 lg:transition-none"
             tabindex="0"
-            role="region"
+            :role="mobilePreviewOpen ? 'dialog' : 'region'"
+            :aria-modal="mobilePreviewOpen || undefined"
             aria-label="Resume preview"
         >
-            <div class="h-full min-h-0">
+            <Button
+                v-if="mobilePreviewOpen"
+                type="button"
+                variant="outline"
+                class="self-start lg:hidden"
+                @click="mobilePreviewOpen = false"
+                >← Back to editing</Button
+            >
+            <div class="min-h-0 flex-1 lg:h-full">
                 <ResumePreview
                     :url="preview(resume.id).url"
                     :template="form.template"

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
+import DeveloperCredit from '@/components/DeveloperCredit.vue';
 import { home } from '@/routes';
 
 defineProps<{
@@ -39,5 +40,8 @@ defineProps<{
                 <slot />
             </div>
         </div>
+        <footer class="text-center text-sm text-muted-foreground">
+            <DeveloperCredit />
+        </footer>
     </div>
 </template>

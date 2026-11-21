@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import { useEventListener } from '@vueuse/core';
+import { FileText } from '@lucide/vue';
 import {
     docx,
     importMethod as importCv,
@@ -34,6 +36,10 @@ const choosingTemplate = ref(
     !hasContent(resume.data) && !resume.data.settings.hidden_sections?.length,
 );
 const comparingTemplates = ref(false);
+const mobilePreviewOpen = ref(false);
+useEventListener(window, 'keydown', (event: KeyboardEvent) => {
+    if (event.key === 'Escape') mobilePreviewOpen.value = false;
+});
 
 function selectTemplate(template: string) {
     resume.template = template;
@@ -168,7 +174,7 @@ function startOver() {
                     :disabled="busy !== null"
                     @click="download('pdf')"
                 >
-                    {{ busy === 'pdf' ? 'Preparing…' : 'PDF' }}
+                    {{ busy === 'pdf' ? 'Preparing…' : 'Download PDF' }}
                 </Button>
                 <Button
                     type="button"
@@ -176,7 +182,7 @@ function startOver() {
                     :disabled="busy !== null"
                     @click="download('docx')"
                 >
-                    {{ busy === 'docx' ? 'Preparing…' : 'Word' }}
+                    {{ busy === 'docx' ? 'Preparing…' : 'Download Word' }}
                 </Button>
                 <Button as-child>
                     <Link :href="register()">Sign up to save</Link>
@@ -266,15 +272,44 @@ function startOver() {
             </section>
 
             <ContentSections v-model="resume.data" />
+            <div
+                class="sticky bottom-4 z-30 self-end rounded-full border bg-background p-1 shadow-lg lg:hidden"
+            >
+                <Button
+                    type="button"
+                    class="rounded-full px-5"
+                    :aria-expanded="mobilePreviewOpen"
+                    aria-controls="mobile-resume-preview"
+                    @click="mobilePreviewOpen = true"
+                >
+                    <FileText class="h-4 w-4" aria-hidden="true" /> Preview
+                    resume
+                </Button>
+            </div>
         </div>
 
         <div
-            class="h-[650px] lg:block lg:h-auto lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain"
+            id="mobile-resume-preview"
+            :class="
+                mobilePreviewOpen
+                    ? 'visible scale-100 opacity-100'
+                    : 'pointer-events-none invisible scale-[0.12] opacity-0 lg:pointer-events-auto lg:visible lg:scale-100 lg:opacity-100'
+            "
+            class="fixed inset-0 z-50 flex origin-bottom-right flex-col gap-3 bg-background p-4 motion-safe:transition-[scale,opacity,visibility] motion-safe:duration-300 motion-safe:ease-out lg:static lg:z-auto lg:block lg:h-auto lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:bg-transparent lg:p-0 lg:transition-none"
             tabindex="0"
-            role="region"
+            :role="mobilePreviewOpen ? 'dialog' : 'region'"
+            :aria-modal="mobilePreviewOpen || undefined"
             aria-label="Resume preview"
         >
-            <div class="h-full min-h-0">
+            <Button
+                v-if="mobilePreviewOpen"
+                type="button"
+                variant="outline"
+                class="self-start lg:hidden"
+                @click="mobilePreviewOpen = false"
+                >← Back to editing</Button
+            >
+            <div class="min-h-0 flex-1 lg:h-full">
                 <ResumePreview
                     :url="preview().url"
                     :template="resume.template"
