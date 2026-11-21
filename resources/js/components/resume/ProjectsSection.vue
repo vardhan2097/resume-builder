@@ -17,7 +17,10 @@ const linkPlaceholder = 'https://';
             <div class="grid gap-4 sm:grid-cols-2">
                 <div class="grid gap-2">
                     <Label>Project name</Label>
-                    <Input v-model="item.name" />
+                    <Input
+                        v-model="item.name"
+                        placeholder="e.g. Customer onboarding"
+                    />
                 </div>
                 <div class="grid gap-2">
                     <Label>Duration</Label>
@@ -37,7 +40,11 @@ const linkPlaceholder = 'https://';
             </div>
             <div class="grid gap-2">
                 <Label>Description (one point per line)</Label>
-                <FieldTextarea v-model="item.description" :rows="4" />
+                <FieldTextarea
+                    v-model="item.description"
+                    :rows="4"
+                    placeholder="Describe the project and your contribution"
+                />
             </div>
         </template>
     </RepeatableSection>

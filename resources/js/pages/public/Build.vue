@@ -30,7 +30,9 @@ const props = defineProps<{
 }>();
 
 const { resume, reset } = useGuestResume(props.defaults);
-const choosingTemplate = ref(!hasContent(resume.data));
+const choosingTemplate = ref(
+    !hasContent(resume.data) && !resume.data.settings.hidden_sections?.length,
+);
 
 function selectTemplate(template: string) {
     resume.template = template;
@@ -251,7 +253,7 @@ function startOver() {
         </div>
 
         <div
-            class="hidden lg:block lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain"
+            class="h-[650px] lg:block lg:h-auto lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain"
             tabindex="0"
             role="region"
             aria-label="Resume preview"

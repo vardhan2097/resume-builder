@@ -31,11 +31,14 @@ const blank = () => ({
                 </div>
                 <div class="grid gap-2">
                     <Label>Institution</Label>
-                    <Input v-model="item.institution" />
+                    <Input
+                        v-model="item.institution"
+                        placeholder="e.g. Pune University"
+                    />
                 </div>
                 <div class="grid gap-2">
                     <Label>Location</Label>
-                    <Input v-model="item.location" />
+                    <Input v-model="item.location" placeholder="e.g. Pune" />
                 </div>
                 <div class="grid gap-2">
                     <Label>Score</Label>
@@ -55,7 +58,10 @@ const blank = () => ({
             </div>
             <div class="grid gap-2">
                 <Label>Details (optional, one point per line)</Label>
-                <FieldTextarea v-model="item.description" />
+                <FieldTextarea
+                    v-model="item.description"
+                    placeholder="Describe relevant coursework or achievements"
+                />
             </div>
         </template>
     </RepeatableSection>

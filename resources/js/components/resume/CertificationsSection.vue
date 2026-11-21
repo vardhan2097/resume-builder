@@ -26,7 +26,10 @@ const blank = () => ({ name: '', issuer: '', date: '' });
                 </div>
                 <div class="grid gap-2">
                     <Label>Issued by</Label>
-                    <Input v-model="item.issuer" />
+                    <Input
+                        v-model="item.issuer"
+                        placeholder="e.g. Design Institute"
+                    />
                 </div>
                 <div class="grid gap-2">
                     <Label>Date</Label>

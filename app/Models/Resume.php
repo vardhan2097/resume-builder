@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Storage;
  *     certifications: list<array<string, mixed>>,
  *     hobbies: list<string>,
  *     references: list<array<string, mixed>>,
- *     settings: array{show_levels: array<string, bool>, section_order: list<string>, page_break_before?: list<string>}
+ *     settings: array{show_levels: array<string, bool>, section_order: list<string>, page_break_before?: list<string>, hidden_sections?: list<string>}
  * }
  *
  * @property int $id
@@ -121,6 +121,7 @@ class Resume extends Model
                     'languages' => true,
                 ],
                 'section_order' => self::SECTIONS,
+                'hidden_sections' => [],
             ],
         ];
     }

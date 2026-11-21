@@ -4,6 +4,7 @@ import { preview } from '@/actions/App/Http/Controllers/GuestResumeController';
 import { Button } from '@/components/ui/button';
 import PreviewLoading from '@/components/resume/PreviewLoading.vue';
 import { post } from '@/lib/http';
+import { sampleResume } from '@/lib/sampleResume';
 import type { ResumeData, TemplateMeta } from '@/types/resume';
 
 const props = defineProps<{
@@ -39,84 +40,7 @@ function viewTemplate(template: string) {
     selectedTemplate.value = template;
 }
 
-const sample: ResumeData = {
-    ...props.defaults,
-    personal: {
-        full_name: 'Aarav Sharma',
-        job_title: 'Product Designer',
-        email: 'aarav@example.com',
-        phone: '+91 98765 43210',
-        location: 'Pune, India',
-        website: '',
-        linkedin: '',
-        github: '',
-        summary:
-            'Product designer with six years of experience creating accessible digital experiences and working with cross-functional teams.',
-    },
-    experience: [
-        {
-            id: 'sample-job',
-            job_title: 'Senior Product Designer',
-            company: 'Northstar Studio',
-            location: 'Pune',
-            start_date: '2021-01',
-            end_date: '',
-            current: true,
-            description:
-                'Led the redesign of a customer platform, improving task completion by 25%.\nPartnered with engineers and researchers to deliver accessible features.',
-        },
-    ],
-    education: [
-        {
-            id: 'sample-education',
-            degree: 'Bachelor of Design',
-            institution: 'Pune University',
-            location: 'Pune',
-            start_date: '2014-06',
-            end_date: '2018-05',
-            score: '',
-            description: '',
-        },
-    ],
-    skills: [
-        { id: 'sample-skill-1', name: 'User research', level: 4 },
-        { id: 'sample-skill-2', name: 'Interaction design', level: 5 },
-    ],
-    tools: [{ id: 'sample-tool', name: 'Figma', level: 5 }],
-    projects: [
-        {
-            id: 'sample-project',
-            name: 'Customer onboarding',
-            duration: '2023',
-            link: '',
-            description:
-                'Designed a simpler onboarding journey for new customers.',
-        },
-    ],
-    certifications: [
-        {
-            id: 'sample-certification',
-            name: 'UX Design Certificate',
-            issuer: 'Design Institute',
-            date: '2022-05',
-        },
-    ],
-    languages: [
-        { id: 'sample-language', name: 'English', level: 5 },
-        { id: 'sample-language-2', name: 'Hindi', level: 5 },
-    ],
-    hobbies: ['Photography', 'Cycling'],
-    references: [
-        {
-            id: 'sample-reference',
-            name: 'Maya Rao',
-            position: 'Design Director',
-            company: 'Northstar Studio',
-            phone: '',
-            email: 'maya@example.com',
-        },
-    ],
-};
+const sample = sampleResume(props.defaults);
 
 onMounted(async () => {
     await Promise.all(

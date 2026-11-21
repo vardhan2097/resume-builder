@@ -29,15 +29,21 @@ const blank = () => ({
             <div class="grid gap-4 sm:grid-cols-2">
                 <div class="grid gap-2">
                     <Label>Job title</Label>
-                    <Input v-model="item.job_title" />
+                    <Input
+                        v-model="item.job_title"
+                        placeholder="e.g. Product Designer"
+                    />
                 </div>
                 <div class="grid gap-2">
                     <Label>Company</Label>
-                    <Input v-model="item.company" />
+                    <Input
+                        v-model="item.company"
+                        placeholder="e.g. Northstar Studio"
+                    />
                 </div>
                 <div class="grid gap-2">
                     <Label>Location</Label>
-                    <Input v-model="item.location" />
+                    <Input v-model="item.location" placeholder="e.g. Pune" />
                 </div>
                 <div class="grid gap-2">
                     <Label>Start date</Label>
@@ -59,7 +65,11 @@ const blank = () => ({
 
             <div class="grid gap-2">
                 <Label>Description (one point per line)</Label>
-                <FieldTextarea v-model="item.description" :rows="4" />
+                <FieldTextarea
+                    v-model="item.description"
+                    :rows="4"
+                    placeholder="Describe your responsibilities and achievements"
+                />
             </div>
         </template>
     </RepeatableSection>

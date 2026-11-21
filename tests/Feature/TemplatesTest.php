@@ -324,8 +324,12 @@ test('every template prints empty and sparse resumes without blank pages', funct
     }
     $bytes = Pdf::loadHTML(app(ResumeRenderer::class)->render($template, '#0f766e', $data, pdf: true))->setPaper('a4')->output();
     $pages = (new Parser)->parseContent($bytes)->getPages();
-    expect($pages)->toHaveCount(1)
-        ->and($pages[0]->getText())->toContain($sparse ? 'Only Project' : ($template === 'classic' ? 'Your Name' : 'YOUR NAME'));
+    expect($pages)->toHaveCount(1);
+    if ($sparse) {
+        expect($pages[0]->getText())->toContain('Only Project');
+    } else {
+        expect($pages[0]->getText())->not->toContain('Your Name', 'YOUR NAME');
+    }
 })->with($templates)->with([false, true]);
 
 test('omitted null and blank sections render exactly like an empty section', function (string $template, string $section) {

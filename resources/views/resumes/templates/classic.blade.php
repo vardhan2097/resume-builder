@@ -78,7 +78,7 @@
             @endif
         </td>
         <td style="vertical-align: middle;">
-            <h1 class="name">{{ $p['full_name'] ?: 'Your Name' }}</h1>
+            <h1 class="name">{{ $p['full_name'] }}</h1>
             @if ($p['job_title'])
                 <div class="role">{{ $p['job_title'] }}</div>
             @endif

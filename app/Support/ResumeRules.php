@@ -94,13 +94,15 @@ class ResumeRules
             'data.references.*.email' => ['nullable', 'email', 'max:150'],
 
             // Optional so data saved before settings existed is still accepted.
-            'data.settings' => ['sometimes', 'array:show_levels,section_order,page_break_before'],
+            'data.settings' => ['sometimes', 'array:show_levels,section_order,page_break_before,hidden_sections'],
             'data.settings.show_levels' => ['sometimes', 'array:skills,tools,languages'],
             'data.settings.show_levels.*' => ['boolean'],
             'data.settings.page_break_before' => ['sometimes', 'array', 'max:'.count(Resume::SECTIONS)],
             'data.settings.page_break_before.*' => ['string', 'distinct', 'in:'.implode(',', Resume::SECTIONS)],
             'data.settings.section_order' => ['sometimes', 'array', 'max:'.count(Resume::SECTIONS)],
             'data.settings.section_order.*' => ['string', 'distinct', 'in:'.implode(',', Resume::SECTIONS)],
+            'data.settings.hidden_sections' => ['sometimes', 'array', 'max:'.(count(Resume::SECTIONS) + 1)],
+            'data.settings.hidden_sections.*' => ['string', 'distinct', 'in:'.implode(',', [...Resume::SECTIONS, 'summary'])],
         ];
 
         foreach (['experience', 'education', 'projects', 'certifications', 'references'] as $section) {

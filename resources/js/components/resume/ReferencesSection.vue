@@ -26,23 +26,37 @@ const blank = () => ({
             <div class="grid gap-4 sm:grid-cols-2">
                 <div class="grid gap-2">
                     <Label>Name</Label>
-                    <Input v-model="item.name" />
+                    <Input v-model="item.name" placeholder="e.g. Maya Rao" />
                 </div>
                 <div class="grid gap-2">
                     <Label>Position</Label>
-                    <Input v-model="item.position" />
+                    <Input
+                        v-model="item.position"
+                        placeholder="e.g. Design Director"
+                    />
                 </div>
                 <div class="grid gap-2">
                     <Label>Company</Label>
-                    <Input v-model="item.company" />
+                    <Input
+                        v-model="item.company"
+                        placeholder="e.g. Northstar Studio"
+                    />
                 </div>
                 <div class="grid gap-2">
                     <Label>Phone</Label>
-                    <Input type="tel" v-model="item.phone" />
+                    <Input
+                        type="tel"
+                        v-model="item.phone"
+                        placeholder="e.g. +91 98765 43210"
+                    />
                 </div>
                 <div class="grid gap-2 sm:col-span-2">
                     <Label>Email</Label>
-                    <Input type="email" v-model="item.email" />
+                    <Input
+                        type="email"
+                        v-model="item.email"
+                        placeholder="e.g. maya@example.com"
+                    />
                 </div>
             </div>
         </template>

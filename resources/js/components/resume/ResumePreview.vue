@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { HttpError, post } from '@/lib/http';
+import { resumeWithExamples } from '@/lib/sampleResume';
 import type { ResumeData } from '@/types/resume';
 
 const props = defineProps<{
@@ -32,7 +33,7 @@ async function load() {
             {
                 template: props.template,
                 color: props.color,
-                data: props.content,
+                data: resumeWithExamples(props.content),
                 format: 'pdf',
             },
             { signal: request.signal },
@@ -96,8 +97,8 @@ onBeforeUnmount(() => {
             </button>
         </div>
         <p class="shrink-0 px-3 py-2 text-xs text-muted-foreground">
-            This is the actual PDF layout. Use “Start on new page” in the form
-            to adjust page breaks.
+            Empty fields show examples in this preview. Downloads contain your
+            information only. Use “Start on new page” to adjust page breaks.
         </p>
         <p
             v-if="notice"
@@ -107,8 +108,8 @@ onBeforeUnmount(() => {
         </p>
         <iframe
             v-if="pdfUrl"
-            :src="`${pdfUrl}#view=FitH&navpanes=0`"
-            title="PDF preview with pages and print controls"
+            :src="`${pdfUrl}#view=FitH&navpanes=0&toolbar=0`"
+            title="Resume preview"
             class="min-h-0 w-full flex-1 border-0"
         />
         <p v-else class="p-6 text-center text-sm text-muted-foreground">

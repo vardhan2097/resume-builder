@@ -2,8 +2,25 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { Personal } from '@/types/resume';
+import { Button } from '@/components/ui/button';
+
+defineProps<{ summaryHidden: boolean }>();
+const emit = defineEmits<{ hideSummary: [] }>();
 
 const personal = defineModel<Personal>({ required: true });
+
+const examples: Personal = {
+    full_name: 'Aarav Sharma',
+    job_title: 'Product Designer',
+    email: 'aarav@example.com',
+    phone: '+91 98765 43210',
+    location: 'Pune, India',
+    website: 'https://example.com',
+    linkedin: 'https://linkedin.com/in/example',
+    github: 'https://github.com/example',
+    summary:
+        'Product designer with experience creating accessible digital experiences.',
+};
 
 const fields: { key: keyof Personal; label: string; type: string }[] = [
     { key: 'full_name', label: 'Full name', type: 'text' },
@@ -27,16 +44,27 @@ const fields: { key: keyof Personal; label: string; type: string }[] = [
                 <Input
                     :id="field.key"
                     :type="field.type"
+                    :placeholder="examples[field.key]"
                     v-model="personal[field.key]"
                 />
             </div>
         </div>
 
-        <div class="mt-4 grid gap-2">
-            <Label for="summary">Professional summary</Label>
+        <div v-if="!summaryHidden" class="mt-4 grid gap-2">
+            <div class="flex items-center justify-between gap-2">
+                <Label for="summary">Professional summary</Label>
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    @click="emit('hideSummary')"
+                    >Hide summary</Button
+                >
+            </div>
             <textarea
                 id="summary"
                 v-model="personal.summary"
+                :placeholder="examples.summary"
                 rows="4"
                 class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             />

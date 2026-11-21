@@ -236,7 +236,7 @@ function download(kind: 'pdf' | 'docx') {
         </form>
 
         <div
-            class="hidden lg:block lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain"
+            class="h-[650px] lg:block lg:h-auto lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain"
             tabindex="0"
             role="region"
             aria-label="Resume preview"
