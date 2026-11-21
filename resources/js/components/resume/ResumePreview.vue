@@ -16,6 +16,7 @@ const pdfUrl = ref('');
 const pages = ref(0);
 const loading = ref(false);
 const notice = ref('');
+const zoom = ref(1);
 let timer: ReturnType<typeof setTimeout> | undefined;
 let controller: AbortController | null = null;
 let revision = 0;
@@ -100,18 +101,50 @@ onBeforeUnmount(() => {
             Empty fields show examples in this preview. Downloads contain your
             information only. Use “Start on new page” to adjust page breaks.
         </p>
+        <div
+            class="flex shrink-0 items-center justify-end gap-2 px-3 pb-2 text-sm"
+            aria-label="Preview zoom controls"
+        >
+            <button
+                type="button"
+                class="rounded border px-3 py-1 disabled:opacity-40"
+                aria-label="Zoom out"
+                :disabled="zoom <= 1"
+                @click="zoom = Math.max(1, zoom - 0.5)"
+            >
+                −
+            </button>
+            <button
+                type="button"
+                class="rounded border px-3 py-1"
+                @click="zoom = 1"
+            >
+                Fit width
+            </button>
+            <button
+                type="button"
+                class="rounded border px-3 py-1 disabled:opacity-40"
+                aria-label="Zoom in"
+                :disabled="zoom >= 2"
+                @click="zoom = Math.min(2, zoom + 0.5)"
+            >
+                +
+            </button>
+        </div>
         <p
             v-if="notice"
             class="shrink-0 bg-amber-100 px-3 py-2 text-sm text-amber-900"
         >
             {{ notice }}
         </p>
-        <iframe
-            v-if="pdfUrl"
-            :src="`${pdfUrl}#view=FitH&navpanes=0&toolbar=0`"
-            title="Resume preview"
-            class="min-h-0 w-full flex-1 border-0"
-        />
+        <div v-if="pdfUrl" class="min-h-0 flex-1 overflow-x-auto">
+            <iframe
+                :src="`${pdfUrl}#view=FitH&navpanes=0&toolbar=0`"
+                title="Resume preview"
+                class="h-full border-0"
+                :style="{ width: `${zoom * 100}%` }"
+            />
+        </div>
         <p v-else class="p-6 text-center text-sm text-muted-foreground">
             {{
                 loading ? 'Preparing PDF preview…' : 'PDF preview unavailable.'
