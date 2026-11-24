@@ -45,6 +45,16 @@ return [
             'photo' => true,
             'palettes' => ['#9f1239', '#1d4ed8', '#0f766e', '#6d28d9', '#a16207', '#334155'],
         ],
+        'ledger' => [
+            'name' => 'Ledger',
+            'photo' => true,
+            'palettes' => ['#b45309', '#1e40af', '#0f766e', '#7e22ce', '#be123c', '#334155'],
+        ],
+        'timeline' => [
+            'name' => 'Timeline Sidebar',
+            'photo' => true,
+            'palettes' => ['#123b70', '#0f766e', '#334155', '#6d28d9', '#9f1239', '#854d0e'],
+        ],
         'banner' => [
             'name' => 'Banner',
             'photo' => true,

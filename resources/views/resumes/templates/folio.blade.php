@@ -3,17 +3,15 @@
     $s = F::prepare($data);
     extract($s);
     $dark = F::shade($color, 0.55);
-    $side = F::tint($color, 0.87);
+    $side = F::tint($color, 0.94);
     $line = F::tint($color, 0.55);
 
     // Sidebar sections that don't fit beside page 1 continue in the main column.
     $sideOrder = F::sectionOrder($data, ['skills', 'tools', 'languages', 'certifications', 'hobbies', 'references']);
-    [$sideSections, $overflow] = F::fitSidebar($data, $s, $sideOrder, 52 - (int) ceil(count($contacts) * 1.6), 34);
+    [$sideSections, $overflow] = F::fitSidebar($data, $s, $sideOrder, 56 - (int) ceil(count($contacts) * 1.6), 30);
     $mainSections = [...F::sectionOrder($data, ['experience', 'education', 'projects']), ...$overflow];
 
     $titles = ['experience' => 'Work Experience', 'tools' => 'Software'] + F::TITLES;
-    $icons = ['experience' => 'briefcase', 'education' => 'education', 'projects' => 'project', 'skills' => 'star', 'tools' => 'tools',
-        'languages' => 'language', 'certifications' => 'award', 'hobbies' => 'heart', 'references' => 'people'];
 @endphp
 <!DOCTYPE html>
 <html lang="en">
@@ -31,21 +29,20 @@
         ul { margin: 3px 0 0; padding-left: 13px; }
         li { margin-bottom: 1px; }
 
-        .head-photo { width: 33%; background: {{ $dark }}; padding: 18px 0 10px; text-align: center; }
-        .photo { width: 118px; height: 118px; border-radius: 59px; border: 4px solid #ffffff; }
-        .initials { width: 118px; height: 80px; padding-top: 38px; margin: 0 auto; border-radius: 59px; border: 4px solid #ffffff; background: {{ $dark }}; color: #ffffff; font-family: 'Montserrat', sans-serif; font-size: 36px; font-weight: bold; line-height: 1; }
-        .head-band { background: #ffffff; padding: 0 26px; border-bottom: 4px solid {{ $color }}; vertical-align: middle; }
-        .name { margin: 0; font-family: 'Montserrat', sans-serif; font-size: 27px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: {{ $dark }}; line-height: 1.15; }
-        .role { margin-top: 5px; font-family: 'Montserrat Light', sans-serif; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: {{ $color }}; }
+        /* A compact masthead and a right-hand notes column give Folio its own structure. */
+        .head-band { padding: 15px 20px 16px 0; border-bottom: 2px solid {{ $dark }}; vertical-align: bottom; }
+        .head-photo { width: 86px; padding: 8px 0 14px; border-bottom: 2px solid {{ $dark }}; text-align: right; vertical-align: bottom; }
+        .photo { width: 72px; height: 72px; }
+        .initials { width: 72px; height: 52px; padding-top: 20px; background: {{ $dark }}; color: #fff; text-align: center; font-family: 'DejaVu Serif', serif; font-size: 25px; line-height: 1; }
+        .name { margin: 0; font-family: 'DejaVu Serif', serif; font-size: 30px; font-weight: normal; letter-spacing: 1px; text-transform: uppercase; color: #111827; line-height: 1.1; }
+        .role { margin-top: 7px; font-size: 10px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; color: {{ $color }}; }
 
-        /* The sidebar is positioned and the main column is plain block flow, so DomPDF can
-           break the main column across pages (it can't split a table row). The grey
-           column behind the sidebar is fixed in the PDF so it repeats on every page. */
+        /* The main column stays in normal flow so it can continue across PDF pages. */
         .body { position: relative; {{ $pdf ? '' : 'min-height: 940px;' }} }
-        .side-bg { position: fixed; top: 0; bottom: 0; left: 0; width: 33%; background: {{ $side }}; z-index: -1; }
-        .side { position: absolute; top: 0; left: 0; {{ $pdf ? '' : 'bottom: 0; background: '.$side.';' }} width: 33%; }
-        .side-in { padding: 6px 18px 18px; }
-        .main { margin-left: 33%; padding: 14px 0 0 22px; }
+        .side-bg { position: fixed; top: 0; bottom: 0; right: 0; width: 29%; background: {{ $side }}; z-index: -1; }
+        .side { position: absolute; top: 0; right: 0; {{ $pdf ? '' : 'bottom: 0; background: '.$side.';' }} width: 29%; }
+        .side-in { padding: 5px 14px 18px; }
+        .main { margin-right: 29%; padding: 12px 22px 0 0; }
 
         .sh { margin: 16px 0 7px; padding-bottom: 4px; border-bottom: 1.5px solid {{ $dark }}; font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase; color: {{ $dark }}; }
         .contact { margin-bottom: 6px; }
@@ -53,11 +50,9 @@
         .contact .ci { width: 16px; padding-top: 1px; }
         .contact img { width: 9px; height: 9px; }
 
-        .timeline { margin-left: 11px; padding-left: 22px; border-left: 0; }
-        .mh { margin: 0 0 8px -35px; padding-top: 12px; font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase; color: {{ $dark }}; }
-        .mh-first { padding-top: 0; }
-        .badge { width: 14px; height: 14px; padding: 5px; margin-right: 9px; border-radius: 0; background: {{ $dark }}; vertical-align: middle; }
-        .mh-rule { margin: -2px 0 8px; height: 1px; background: {{ $line }}; }
+        .timeline { padding: 0; }
+        .mh { margin: 16px 0 8px; padding: 0 0 4px; border-bottom: 1px solid {{ $line }}; page-break-after: avoid; font-family: 'DejaVu Serif', serif; font-size: 12px; font-weight: bold; letter-spacing: 0.8px; text-transform: uppercase; color: {{ $dark }}; }
+        .mh-first { margin-top: 0; }
 
         .entry { margin-bottom: 9px; }
         .entry-sub-row { margin-bottom: 1px; }
@@ -91,17 +86,17 @@
 
 <table>
     <tr>
+        <td class="head-band">
+            <h1 class="name">{{ $p['full_name'] }}</h1>
+            @if ($p['job_title'])
+                <div class="role">{{ $p['job_title'] }}</div>
+            @endif
+        </td>
         <td class="head-photo">
             @if ($photo)
                 <img src="{{ $photo }}" class="photo" alt="">
             @else
                 <div class="initials">{{ F::initials($p['full_name']) }}</div>
-            @endif
-        </td>
-        <td class="head-band">
-            <h1 class="name">{{ $p['full_name'] }}</h1>
-            @if ($p['job_title'])
-                <div class="role">{{ $p['job_title'] }}</div>
             @endif
         </td>
     </tr>
@@ -133,17 +128,15 @@
             <div class="timeline">
                 @php($first = true)
                 @if ($p['summary'])
-                    <div class="mh mh-first"><img src="{{ F::icon('user', '#ffffff') }}" class="badge" alt="">Profile</div>
-                    <div class="mh-rule"></div>
+                    <div class="mh mh-first">Profile</div>
                     @include('resumes.partials.text', ['text' => $p['summary']])
                     @php($first = false)
                 @endif
 
                 @foreach ($mainSections as $section)
                     @if (count($s[$section]))
-                        <div class="mh {{ $first ? 'mh-first' : '' }}" data-page-break="{{ in_array($section, $data['settings']['page_break_before'] ?? []) ? 1 : 0 }}"><img src="{{ F::icon($icons[$section], '#ffffff') }}" class="badge" alt="">{{ $titles[$section] }}</div>
-                        <div class="mh-rule"></div>
-                        @include('resumes.partials.section', ['section' => $section, 'opts' => ['levels' => 'bars', 'plain' => 'tags', 'orgFirst' => $section === 'experience']])
+                        <div class="mh {{ $first ? 'mh-first' : '' }}" data-page-break="{{ in_array($section, $data['settings']['page_break_before'] ?? []) ? 1 : 0 }}">{{ $titles[$section] }}</div>
+                            @include('resumes.partials.section', ['section' => $section, 'opts' => ['levels' => 'bars', 'plain' => 'tags', 'orgFirst' => $section === 'experience']])
                         @php($first = false)
                     @endif
                 @endforeach
