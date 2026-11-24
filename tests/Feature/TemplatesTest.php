@@ -396,7 +396,7 @@ test('switching between old and new templates preserves resume content and setti
     $data['settings']['show_levels'] = ['skills' => false, 'tools' => true, 'languages' => false];
     $resume = $user->resumes()->create(['title' => 'Switching', 'template' => 'classic', 'color' => '#0f766e', 'data' => $data]);
 
-    foreach (['editorial', 'banner', 'metro', 'classic'] as $template) {
+    foreach (['editorial', 'banner', 'metro', 'folio', 'studio', 'classic'] as $template) {
         $this->actingAs($user)->put(route('resumes.update', $resume), [
             'title' => 'Switching', 'template' => $template, 'color' => '#0f766e', 'data' => $data,
         ])->assertSessionHasNoErrors();

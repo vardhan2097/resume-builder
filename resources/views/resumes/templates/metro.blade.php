@@ -73,7 +73,9 @@
         .metro-photo { width: 72px; height: 72px; }
         .metro-contacts { background: {{ $card }}; padding: 9px 14px; font-size: 8.5px; line-height: 1.6; overflow-wrap: break-word; }
         .metro-contacts b { color: {{ $dark }}; }
-        .sh { border-bottom: 0; border-left: 4px solid {{ $color }}; background: {{ $card }}; padding: 5px 8px; }
+        .metro-flow { margin: 14px 0 0 12px; padding-left: 20px; border-left: 2px solid {{ $line }}; }
+        .sh { border: 0; margin-left: -27px; padding: 4px 8px; background: {{ $dark }}; color: #fff; }
+        .entry { border-left: 3px solid {{ $color }}; padding-left: 10px; margin-top: 8px; }
 
     </style>
 </head>
@@ -94,6 +96,7 @@
     </div>
 @endif
 
+<div class="metro-flow">
 @if ($p['summary'])
     <div class="sh">Profile Summary</div>
     @include('resumes.partials.text', ['text' => $p['summary']])
@@ -106,5 +109,6 @@
     @endif
 @endforeach
 
+</div>
 </body>
 </html>

@@ -65,13 +65,14 @@
 
         .entry, .item, .side-item, .lite { page-break-inside: avoid; }
         [data-page-break="1"] { page-break-before: always; }
- .editorial-header { text-align: center; padding: 8px 12px 15px; border-bottom: 2px solid {{ $dark }}; }
+ .editorial-header { text-align: left; padding: 10px 0 18px; border-bottom: 3px double {{ $dark }}; }
         .editorial-header .name { font-family: DejaVu Serif, serif; font-size: 27px; letter-spacing: 2px; color: #1f2937; }
         .editorial-header .role { margin-top: 6px; letter-spacing: 2px; }
-        .editorial-photo { width: 66px; height: 66px; border-radius: 33px; margin-bottom: 7px; }
+        .editorial-photo { width: 70px; height: 70px; float: right; margin: 0 0 6px 16px; }
         .editorial-contacts { margin-top: 10px; font-size: 8.5px; line-height: 1.6; overflow-wrap: break-word; }
         .editorial-contacts b { color: {{ $color }}; }
-        .sh { font-family: DejaVu Serif, serif; letter-spacing: 1.3px; border-bottom: 1px solid {{ $line }}; }
+        .sh { font-family: DejaVu Serif, serif; letter-spacing: 1.3px; border-bottom: 0; margin: 18px 0 5px; }
+        .editorial-content { margin-left: 22%; border-left: 1px solid {{ $line }}; padding-left: 14px; }
 
     </style>
 </head>
@@ -92,13 +93,13 @@
 
 @if ($p['summary'])
     <div class="sh">Profile Summary</div>
-    @include('resumes.partials.text', ['text' => $p['summary']])
+    <div class="editorial-content">@include('resumes.partials.text', ['text' => $p['summary']])</div>
 @endif
 
 @foreach ($sections as $section)
     @if (count($s[$section]))
         <div class="sh" data-page-break="{{ in_array($section, $data['settings']['page_break_before'] ?? []) ? 1 : 0 }}">{{ $titles[$section] }}</div>
-        @include('resumes.partials.section', ['section' => $section, 'opts' => ['levels' => 'chips', 'plain' => 'tags']])
+        <div class="editorial-content">@include('resumes.partials.section', ['section' => $section, 'opts' => ['levels' => 'chips', 'plain' => 'tags']])</div>
     @endif
 @endforeach
 

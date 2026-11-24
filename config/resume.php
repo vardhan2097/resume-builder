@@ -35,6 +35,16 @@ return [
             'photo' => true,
             'palettes' => ['#164e63', '#1e3a8a', '#713f12', '#4c1d95', '#9f1239', '#334155'],
         ],
+        'folio' => [
+            'name' => 'Folio',
+            'photo' => true,
+            'palettes' => ['#7c2d12', '#164e63', '#3f6212', '#1e3a8a', '#6b21a8', '#334155'],
+        ],
+        'studio' => [
+            'name' => 'Studio',
+            'photo' => true,
+            'palettes' => ['#9f1239', '#1d4ed8', '#0f766e', '#6d28d9', '#a16207', '#334155'],
+        ],
         'banner' => [
             'name' => 'Banner',
             'photo' => true,
