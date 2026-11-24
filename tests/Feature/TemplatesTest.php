@@ -388,3 +388,23 @@ test('partially completed employment and education rows print without missing fi
     $bytes = Pdf::loadHTML($renderer->render($template, '#0f766e', $data, pdf: true))->setPaper('a4')->output();
     expect((new Parser)->parseContent($bytes)->getText())->toContain('Only Company', 'Only Role', 'Only School', 'Only Degree');
 })->with($templates);
+
+test('switching between old and new templates preserves resume content and settings', function () {
+    $user = User::factory()->create();
+    $data = fullResumeData();
+    $data['settings']['section_order'] = ['projects', 'experience', 'education'];
+    $data['settings']['show_levels'] = ['skills' => false, 'tools' => true, 'languages' => false];
+    $resume = $user->resumes()->create(['title' => 'Switching', 'template' => 'classic', 'color' => '#0f766e', 'data' => $data]);
+
+    foreach (['editorial', 'banner', 'metro', 'classic'] as $template) {
+        $this->actingAs($user)->put(route('resumes.update', $resume), [
+            'title' => 'Switching', 'template' => $template, 'color' => '#0f766e', 'data' => $data,
+        ])->assertSessionHasNoErrors();
+
+        $resume->refresh();
+        expect($resume->template)->toBe($template)
+            ->and($resume->data)->toEqual($data);
+        expect(app(ResumeRenderer::class)->render($template, $resume->color, $resume->data))
+            ->toContain('Borcelle 1', 'Brand Refresh', 'Branding', 'Google Ads');
+    }
+});

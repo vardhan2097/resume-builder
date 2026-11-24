@@ -25,6 +25,16 @@ return [
             'photo' => true,
             'palettes' => ['#1f3a5f', '#334155', '#0f766e', '#4c1d95', '#7c2d12', '#9f1239'],
         ],
+        'editorial' => [
+            'name' => 'Editorial',
+            'photo' => true,
+            'palettes' => ['#854d0e', '#334155', '#0f766e', '#7c2d12', '#1e3a8a', '#6b21a8'],
+        ],
+        'metro' => [
+            'name' => 'Metro',
+            'photo' => true,
+            'palettes' => ['#164e63', '#1e3a8a', '#713f12', '#4c1d95', '#9f1239', '#334155'],
+        ],
         'banner' => [
             'name' => 'Banner',
             'photo' => true,
