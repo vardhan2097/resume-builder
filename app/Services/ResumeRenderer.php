@@ -17,7 +17,7 @@ class ResumeRenderer
 
     public function pdfPreview(?string $template, ?string $color, mixed $data, ?string $photoPath = null): Response
     {
-        $pdf = $this->document($template, $color, $data, $photoPath);
+        $pdf = $this->document($template, $color, $data, $photoPath, preview: true);
         $bytes = $pdf->output();
 
         return response($bytes, 200, [
@@ -28,10 +28,13 @@ class ResumeRenderer
         ]);
     }
 
-    public function document(?string $template, ?string $color, mixed $data, ?string $photoPath = null): PdfDocument
+    public function document(?string $template, ?string $color, mixed $data, ?string $photoPath = null, bool $preview = false): PdfDocument
     {
         $pdf = Pdf::loadHTML($this->render($template, $color, $data, pdf: true, photoPath: $photoPath))
             ->setPaper('a4')->setOption('isRemoteEnabled', false);
+        if ($preview) {
+            $pdf->setOption('isFontSubsettingEnabled', true);
+        }
         $pdf->render();
 
         $dompdf = $pdf->getDomPDF();
