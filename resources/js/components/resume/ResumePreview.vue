@@ -1,8 +1,18 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import {
+    getDocument,
+    GlobalWorkerOptions,
+    type PDFDocumentProxy,
+    type RenderTask,
+} from 'pdfjs-dist/legacy/build/pdf.mjs';
+import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
+
 import { HttpError, post } from '@/lib/http';
 import { resumeWithExamples } from '@/lib/sampleResume';
 import type { ResumeData } from '@/types/resume';
+
+GlobalWorkerOptions.workerSrc = workerUrl;
 
 const props = defineProps<{
     url: string;
@@ -12,7 +22,57 @@ const props = defineProps<{
     content: ResumeData;
 }>();
 
-const pdfUrl = ref('');
+const preview = ref<HTMLElement | null>(null);
+const hasPreview = ref(false);
+let pdf: PDFDocumentProxy | null = null;
+let renderTask: RenderTask | null = null;
+let renderRevision = 0;
+let observer: ResizeObserver | null = null;
+let disposed = false;
+
+async function renderPages() {
+    const container = preview.value;
+    const document = pdf;
+    if (!container || !document || !container.clientWidth) return;
+    const current = ++renderRevision;
+    renderTask?.cancel();
+    try {
+        for (let number = 1; number <= document.numPages; number++) {
+            const page = await document.getPage(number);
+            if (current !== renderRevision) return;
+            const base = page.getViewport({ scale: 1 });
+            const scale = (container.clientWidth / base.width) * zoom.value;
+            const viewport = page.getViewport({ scale });
+            const ratio = Math.min(window.devicePixelRatio || 1, 2);
+            const canvas = window.document.createElement('canvas');
+            canvas.width = Math.floor(viewport.width * ratio);
+            canvas.height = Math.floor(viewport.height * ratio);
+            canvas.style.width = `${Math.floor(viewport.width)}px`;
+            canvas.style.height = `${Math.floor(viewport.height)}px`;
+            canvas.style.margin = '0 auto 12px';
+            canvas.setAttribute('aria-label', `Resume preview page ${number}`);
+            const context = canvas.getContext('2d');
+            if (!context) throw new Error('Canvas unavailable');
+            renderTask = page.render({
+                canvasContext: context,
+                viewport,
+                transform: [ratio, 0, 0, ratio, 0, 0],
+            });
+            await renderTask.promise;
+            if (current !== renderRevision) return;
+            if (number === 1) {
+                container.replaceChildren(canvas);
+                hasPreview.value = true;
+                notice.value = '';
+            } else {
+                container.appendChild(canvas);
+            }
+        }
+    } catch (error) {
+        if (current !== renderRevision) return;
+        notice.value = 'Could not render the PDF preview. Please try again.';
+    }
+}
 const pages = ref(0);
 const loading = ref(false);
 const notice = ref('');
@@ -20,9 +80,16 @@ const zoom = ref(1);
 let timer: ReturnType<typeof setTimeout> | undefined;
 let controller: AbortController | null = null;
 let revision = 0;
+let inFlight = false;
+let pending = false;
 
 async function load() {
-    controller?.abort();
+    if (inFlight) {
+        pending = true;
+        return;
+    }
+    inFlight = true;
+    pending = false;
     const request = new AbortController();
     controller = request;
     const current = ++revision;
@@ -39,14 +106,21 @@ async function load() {
             },
             { signal: request.signal },
         );
-        const blob = await response.blob();
+        const data = await response.arrayBuffer();
         if (request.signal.aborted || current !== revision) return;
 
-        const previous = pdfUrl.value;
-        pdfUrl.value = URL.createObjectURL(blob);
-        pages.value = Number(response.headers.get('X-PDF-Pages') ?? 0);
-        notice.value = '';
-        if (previous) URL.revokeObjectURL(previous);
+        const next = await getDocument({ data }).promise;
+        if (request.signal.aborted || current !== revision || disposed) {
+            await next.destroy();
+            return;
+        }
+        const previous = pdf;
+        ++renderRevision;
+        renderTask?.cancel();
+        pdf = next;
+        pages.value = next.numPages;
+        await renderPages();
+        await previous?.destroy();
     } catch (error) {
         if (request.signal.aborted || current !== revision) return;
         notice.value =
@@ -54,24 +128,42 @@ async function load() {
                 ? error.message
                 : 'Could not update the PDF preview. Please try again.';
     } finally {
-        if (current === revision) loading.value = false;
+        inFlight = false;
+        if (pending && !disposed) {
+            void load();
+        } else if (current === revision) {
+            loading.value = false;
+        }
     }
 }
 
 watch(
     () => [props.template, props.color, props.content, props.photoKey],
     () => {
-        controller?.abort();
+        ++revision;
         clearTimeout(timer);
-        timer = setTimeout(load, 1000);
+        timer = setTimeout(load, 400);
     },
     { deep: true },
 );
-onMounted(load);
+watch(zoom, renderPages);
+onMounted(() => {
+    observer = new ResizeObserver(() => {
+        void renderPages();
+    });
+    if (preview.value) observer.observe(preview.value);
+    void load();
+});
 onBeforeUnmount(() => {
     clearTimeout(timer);
     controller?.abort();
-    if (pdfUrl.value) URL.revokeObjectURL(pdfUrl.value);
+    disposed = true;
+    ++revision;
+    ++renderRevision;
+    renderTask?.cancel();
+    observer?.disconnect();
+    void pdf?.destroy();
+    preview.value?.replaceChildren();
 });
 </script>
 
@@ -137,15 +229,16 @@ onBeforeUnmount(() => {
         >
             {{ notice }}
         </p>
-        <div v-if="pdfUrl" class="min-h-0 flex-1 overflow-x-auto">
-            <iframe
-                :src="`${pdfUrl}#view=FitH&navpanes=0&toolbar=0`"
-                title="Resume preview"
-                class="h-full border-0"
-                :style="{ width: `${zoom * 100}%` }"
-            />
-        </div>
-        <p v-else class="p-6 text-center text-sm text-muted-foreground">
+        <div
+            ref="preview"
+            class="min-h-0 flex-1 overflow-auto"
+            aria-label="Resume preview"
+        />
+        <p
+            v-if="!hasPreview"
+            class="p-6 text-center text-sm text-muted-foreground"
+            role="status"
+        >
             {{
                 loading ? 'Preparing PDF preview…' : 'PDF preview unavailable.'
             }}
